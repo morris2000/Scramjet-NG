@@ -1,0 +1,2 @@
+Scramjet-NG GitHub connector write-permission probe.
+Date: 2026-08-06
