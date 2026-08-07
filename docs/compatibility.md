@@ -12,10 +12,16 @@
 | Browser WebSocket | ✓ |  |  | Text and binary frames pass through the official rewrite, Libcurl transport, and Wisp endpoint | `tests/fixture.test.ts`, `tests/e2e/compatibility.spec.ts` |
 | Server-Sent Events | ✓ |  |  | EventSource framing, named events, event IDs, streaming, and close lifecycle pass through Libcurl/Wisp | `tests/fixture.test.ts`, `tests/e2e/compatibility.spec.ts` |
 | SPA navigation | ✓ |  |  | Fixture `pushState`, `popstate`, and back navigation retain the virtual route | `tests/e2e/compatibility.spec.ts` |
+| Storage virtualization | ✓ |  |  | Basic local/session key operations are namespaced by the virtual target host; parent harness storage remains isolated | `tests/e2e/compatibility.spec.ts` |
+| Cookie handling | ✓ |  |  | Basic `document.cookie`, response `Set-Cookie`, and subsequent request-cookie round-trips are covered | `tests/fixture.test.ts`, `tests/e2e/compatibility.spec.ts` |
 | Dynamic import |  |  | ✓ | Not implemented or tested | — |
 | Web Worker |  |  | ✓ | Not implemented or tested | — |
-| Storage virtualization |  |  | ✓ | Policy and runtime behavior not finalized | — |
-| Cookie handling |  |  | ✓ | Rewriting strategy not finalized | — |
+
+The cookie browser assertion allows a short asynchronous handoff after a
+`document.cookie` setter before checking the next transport request. This
+reflects the audited controller's Service Worker cookie-sync path; expiry,
+domain/path edge cases, partitioning, and third-party cookie policy remain
+additional coverage.
 
 The SSE assertion uses a finite self-owned stream. Reconnect behavior across
 long-lived production feeds remains additional coverage.
