@@ -4,6 +4,7 @@ import {
 	type Server,
 	type ServerResponse,
 } from "node:http";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -11,6 +12,7 @@ import { WebSocketServer } from "ws";
 
 const FIXTURE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const CLIENT_FILE = join(FIXTURE_ROOT, "client", "main.ts");
+const RUNTIME_COMPAT_FILE = join(FIXTURE_ROOT, "client", "runtime-compat.ts");
 const fixtureWebSocketServers = new WeakMap<Server, WebSocketServer>();
 
 export interface ListeningCompatibilityFixture {
@@ -54,6 +56,58 @@ async function readBody(request: AsyncIterable<Buffer>): Promise<Buffer> {
 	return Buffer.concat(chunks, total);
 }
 
+interface MultipartPart {
+	name: string;
+	filename?: string;
+	contentType?: string;
+	body: Buffer;
+}
+
+function parseMultipartBody(body: Buffer, contentType: string): MultipartPart[] {
+	const boundaryMatch = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(contentType);
+	const boundary = (boundaryMatch?.[1] ?? boundaryMatch?.[2])?.trim();
+	if (!boundary) throw new Error("Multipart boundary is missing");
+
+	const delimiter = Buffer.from(`--${boundary}`);
+	const headerSeparator = Buffer.from("\r\n\r\n");
+	const parts: MultipartPart[] = [];
+	let cursor = body.indexOf(delimiter);
+
+	while (cursor >= 0) {
+		let partStart = cursor + delimiter.byteLength;
+		if (body.subarray(partStart, partStart + 2).toString() === "--") break;
+		if (body.subarray(partStart, partStart + 2).toString() === "\r\n") {
+			partStart += 2;
+		}
+
+		const nextDelimiter = body.indexOf(delimiter, partStart);
+		if (nextDelimiter < 0) break;
+
+		let partEnd = nextDelimiter;
+		if (body.subarray(partEnd - 2, partEnd).toString() === "\r\n") {
+			partEnd -= 2;
+		}
+		const part = body.subarray(partStart, partEnd);
+		const separatorIndex = part.indexOf(headerSeparator);
+		if (separatorIndex < 0) throw new Error("Multipart headers are malformed");
+
+		const headers = part.subarray(0, separatorIndex).toString("utf8");
+		const disposition = /content-disposition:\s*form-data;\s*name="([^"]+)"(?:;\s*filename="([^"]*)")?/i.exec(headers);
+		if (!disposition) throw new Error("Multipart disposition is missing");
+
+		const contentTypeMatch = /content-type:\s*([^\r\n]+)/i.exec(headers);
+		parts.push({
+			name: disposition[1],
+			filename: disposition[2],
+			contentType: contentTypeMatch?.[1],
+			body: part.subarray(separatorIndex + headerSeparator.byteLength),
+		});
+		cursor = nextDelimiter;
+	}
+
+	return parts;
+}
+
 async function handleFixtureRequest(
 	request: IncomingMessage,
 	response: ServerResponse
@@ -79,6 +133,20 @@ async function handleFixtureRequest(
 			);
 		} catch {
 			writeText(response, 500, "text/plain; charset=utf-8", "Client asset error");
+		}
+		return;
+	}
+
+	if (url.pathname === "/runtime-compat.js" && request.method === "GET") {
+		try {
+			writeText(
+				response,
+				200,
+				"application/javascript; charset=utf-8",
+				await readFile(RUNTIME_COMPAT_FILE, "utf8")
+			);
+		} catch {
+			writeText(response, 500, "text/plain; charset=utf-8", "Runtime compatibility asset error");
 		}
 		return;
 	}
@@ -182,6 +250,52 @@ export function describeDynamicModule() {
 		return;
 	}
 
+	if (url.pathname === "/api/upload" && request.method === "POST") {
+		try {
+			const body = await readBody(request);
+			const contentTypeHeader = request.headers["content-type"];
+			const contentType = Array.isArray(contentTypeHeader)
+				? contentTypeHeader[0] ?? ""
+				: contentTypeHeader ?? "";
+			const parts = parseMultipartBody(body, contentType);
+			const description = parts.find((part) => part.name === "description" && !part.filename);
+			const file = parts.find((part) => part.name === "file" && part.filename);
+			if (!description || !file || !file.filename) {
+				throw new Error("Required upload parts are missing");
+			}
+
+			writeText(
+				response,
+				200,
+				"application/json; charset=utf-8",
+				JSON.stringify({
+					description: description.body.toString("utf8"),
+					fileName: file.filename,
+					fileType: file.contentType ?? "",
+					fileBytes: file.body.byteLength,
+					fileBody: file.body.toString("utf8"),
+					fileSha256: createHash("sha256").update(file.body).digest("hex"),
+				})
+			);
+		} catch {
+			writeText(response, 400, "text/plain; charset=utf-8", "Invalid multipart upload");
+		}
+		return;
+	}
+
+	if (url.pathname === "/api/slow" && request.method === "GET") {
+		setTimeout(() => {
+			if (response.destroyed) return;
+			writeText(
+				response,
+				200,
+				"text/plain; charset=utf-8",
+				"slow response completed"
+			);
+		}, 1_000);
+		return;
+	}
+
 	if (url.pathname === "/api/cookie" && request.method === "GET") {
 		response.setHeader(
 			"set-cookie",
@@ -223,6 +337,10 @@ class UpgradeResponse {
 
 	constructor(socket: import("node:net").Socket) {
 		this.socket = socket;
+	}
+
+	get destroyed(): boolean {
+		return this.socket.destroyed;
 	}
 
 	setHeader(name: string, value: string | number | readonly string[]): this {
@@ -371,8 +489,12 @@ function writeFixtureHtml(response: ServerResponse): void {
     <dt>Storage</dt><dd id="storage-result">pending</dd>
     <dt>Dynamic Import</dt><dd id="dynamic-result">pending</dd>
     <dt>Web Worker</dt><dd id="worker-result">pending</dd>
+    <dt>Blob URL</dt><dd id="blob-result">pending</dd>
+    <dt>File upload</dt><dd id="upload-result">pending</dd>
+    <dt>AbortController</dt><dd id="abort-result">pending</dd>
     <dt>Error</dt><dd id="error-result"></dd>
   </dl>
+  <script src="/runtime-compat.js"></script>
   <script src="/main.js"></script>
 </body>
 </html>
