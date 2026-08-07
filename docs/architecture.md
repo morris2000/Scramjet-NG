@@ -42,9 +42,15 @@ Runtime composition origin
   v
 Self-owned compatibility fixture
   |-- HTTP, streaming, and POST endpoints
+  |-- /events finite Server-Sent Events stream
   |-- /socket WebSocket text/binary echo
   |-- SPA History API controls
 ```
+
+A fixture EventSource is rewritten by the audited Scramjet runtime, carried as a
+stream through the browser transport and Wisp, and delivered with native SSE
+framing. The browser test observes the open event, default and named messages,
+event IDs, server-side close, error notification, and explicit close.
 
 A fixture WebSocket is rewritten by the audited Scramjet runtime, carried by the
 browser transport over Wisp, and terminated by the fixture's explicit
