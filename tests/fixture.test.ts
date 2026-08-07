@@ -81,3 +81,23 @@ test("fixture streams standards-shaped SSE events", async () => {
 		await fixture.close();
 	}
 });
+
+test("fixture exposes the cookie contract used by the browser slice", async () => {
+	const fixture = await listenCompatibilityFixture();
+
+	try {
+		const response = await fetch(`${fixture.origin}/api/cookie`, {
+			headers: { cookie: "fixture_direct=1" },
+		});
+		assert.equal(response.status, 200);
+		assert.equal(
+			response.headers.get("set-cookie"),
+			"fixture_server=from-server; Path=/; SameSite=Lax"
+		);
+		assert.deepEqual(await response.json(), {
+			requestCookie: "fixture_direct=1",
+		});
+	} finally {
+		await fixture.close();
+	}
+});
