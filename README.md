@@ -37,7 +37,8 @@ The local runtime slice now contains three explicit boundaries:
 - `runtime/adapter/` binds the audited official browser runtime;
 - `runtime/assets/` serves only pinned, verified runtime assets;
 - `runtime/gateway/` decodes the official `/~/sj/<controller>/<frame>/...`
-  route and forwards only targets allowed by an explicit security policy.
+  route and forwards only targets allowed by an explicit security policy,
+  including the `/wisp/` WebSocket upgrade boundary.
 
 The adapter boundary mirrors the audited upstream API:
 
@@ -54,6 +55,7 @@ Run the available checks with:
 pnpm test
 pnpm check
 pnpm check:gateway
+pnpm check:wisp
 ```
 
 The gateway is intentionally allowlist-first. Production policy rejects
