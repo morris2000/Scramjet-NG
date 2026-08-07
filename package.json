@@ -5,7 +5,7 @@
 	"type": "module",
 	"packageManager": "pnpm@10.12.1",
 	"scripts": {
-		"test": "node --experimental-strip-types --test tests/runtime-adapter.test.ts tests/runtime-bootstrap.test.ts tests/runtime-official.test.ts tests/runtime-assets.test.ts tests/runtime-sync.test.ts tests/runtime-gateway.test.ts tests/runtime-composition.test.ts",
+		"test": "node --experimental-strip-types --test tests/fixture.test.ts tests/runtime-adapter.test.ts tests/runtime-bootstrap.test.ts tests/runtime-official.test.ts tests/runtime-assets.test.ts tests/runtime-sync.test.ts tests/runtime-gateway.test.ts tests/runtime-composition.test.ts",
 		"check": "node --experimental-strip-types --check runtime/adapter/adapter.ts",
 		"check:official": "node --experimental-strip-types --check runtime/adapter/official.ts",
 		"check:assets": "node --experimental-strip-types --check runtime/assets/server.ts",
@@ -13,6 +13,7 @@
 		"check:gateway": "node --experimental-strip-types --check runtime/gateway/server.ts",
 		"check:wisp": "node --experimental-strip-types --check runtime/gateway/wisp.ts",
 		"check:composition": "node --experimental-strip-types --check runtime/composition/server.ts",
+		"check:fixture": "node --experimental-strip-types --check fixtures/compatibility-app/server/index.ts",
 		"assets:sync": "node --experimental-strip-types runtime/assets/sync.ts",
 		"e2e": "pnpm assets:sync && playwright test"
 	},
@@ -20,6 +21,7 @@
 		"@mercuryworkshop/wisp-js": "0.4.1"
 	},
 	"devDependencies": {
-		"@playwright/test": "1.62.0"
+		"@playwright/test": "1.62.0",
+		"ws": "8.21.2"
 	}
 }
