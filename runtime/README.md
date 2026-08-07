@@ -76,12 +76,46 @@ The adapter does not implement a second URL codec. This is important because
 the upstream rewriter owns its prefix, encoded target, hash handling, and
 request metadata.
 
+## HTTP gateway
+
+`runtime/gateway/` provides the first live network vertical slice. It follows
+the official controller route format:
+
+```text
+/~/sj/<controller-id>/<frame-id>/<encoded-target>
+```
+
+The gateway:
+
+- decodes only that route and drops Scramjet query metadata before forwarding;
+- forwards HTTP methods, headers, request bodies, status, cookies, and a
+  streaming response body;
+- validates redirect destinations and rewrites safe `Location` headers back to
+  the same Scramjet route;
+- applies request/response size limits and an upstream timeout;
+- requires an explicit host allowlist and resolves hostnames before forwarding;
+- rejects loopback, private, link-local, metadata, and reserved addresses by
+  default.
+
+For a local fixture, construct the policy explicitly:
+
+```ts
+const policy = createGatewayPolicy({
+  development: true,
+  allowedHosts: ["127.0.0.1"],
+  allowLoopback: true,
+});
+```
+
+This is an HTTP gateway slice only. Wisp/WebSocket transport, browser asset
+composition, and DNS-to-connection pinning remain separate follow-up work.
+
 ## Security boundary
 
 The adapter only validates URL schemes, URL credentials, and same-origin
-Service Worker paths. It is not the network gateway and must not be treated as
-SSRF protection. The future gateway still needs host/IP validation, redirect
-validation, limits, timeouts, and audit logging before it forwards a request.
+Service Worker paths. The HTTP gateway adds the first SSRF controls, but it is
+still an MVP boundary: DNS is resolved and checked before each forward, while
+socket-level DNS pinning and structured audit logging are still pending.
 
 `reset()` only clears adapter state. It does not unregister a Service Worker
 or close a transport; those resource operations belong in an explicit
@@ -90,4 +124,3 @@ transport lifecycle contract when concrete runtime bindings are wired.
 The binding only wires browser runtime assets. Scramjet-NG still needs a proxy
 gateway, Wisp endpoint, Service Worker bundle, and served runtime assets before
 the Playwright fixture can be loaded through a live proxy.
-
