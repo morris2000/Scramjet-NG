@@ -2,7 +2,7 @@ node_modules/
 coverage/
 playwright-report/
 test-results/
+.playwright-browsers/
 *.log
 runtime-assets/
 .runtime-assets-*/
-
