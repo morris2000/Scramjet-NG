@@ -7,9 +7,12 @@ export interface GatewayPolicy {
   readonly allowLoopback: boolean;
   readonly allowPrivateNetworks: boolean;
   readonly maxRequestBodyBytes: number;
-  readonly maxResponseBodyBytes: number;
-  readonly timeoutMs: number;
-  readonly maxRedirects: number;
+	readonly maxResponseBodyBytes: number;
+	readonly timeoutMs: number;
+	readonly maxRedirects: number;
+	readonly maxWispStreamsTotal: number;
+	readonly allowUdpStreams: boolean;
+	readonly maxWebSocketConnectionBytes: number;
 }
 
 export interface GatewayPolicyInput {
@@ -18,9 +21,12 @@ export interface GatewayPolicyInput {
   readonly allowLoopback?: boolean;
   readonly allowPrivateNetworks?: boolean;
   readonly maxRequestBodyBytes?: number;
-  readonly maxResponseBodyBytes?: number;
-  readonly timeoutMs?: number;
-  readonly maxRedirects?: number;
+	readonly maxResponseBodyBytes?: number;
+	readonly timeoutMs?: number;
+	readonly maxRedirects?: number;
+	readonly maxWispStreamsTotal?: number;
+	readonly allowUdpStreams?: boolean;
+	readonly maxWebSocketConnectionBytes?: number;
 }
 
 export interface LookupAddress {
@@ -52,6 +58,8 @@ const DEFAULT_MAX_REQUEST_BODY_BYTES = 8 * 1024 * 1024;
 const DEFAULT_MAX_RESPONSE_BODY_BYTES = 32 * 1024 * 1024;
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_REDIRECTS = 5;
+const DEFAULT_MAX_WISP_STREAMS_TOTAL = 64;
+const DEFAULT_MAX_WEBSOCKET_CONNECTION_BYTES = 64 * 1024 * 1024;
 
 function normalizeHost(host: string): string {
   return host.trim().toLowerCase().replace(/\.$/, "");
@@ -80,12 +88,22 @@ export function createGatewayPolicy(input: GatewayPolicyInput = {}): GatewayPoli
     input.maxRequestBodyBytes ?? DEFAULT_MAX_REQUEST_BODY_BYTES;
   const maxResponseBodyBytes =
     input.maxResponseBodyBytes ?? DEFAULT_MAX_RESPONSE_BODY_BYTES;
-  const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const maxRedirects = input.maxRedirects ?? DEFAULT_MAX_REDIRECTS;
+	const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+	const maxRedirects = input.maxRedirects ?? DEFAULT_MAX_REDIRECTS;
+	const maxWispStreamsTotal =
+		input.maxWispStreamsTotal ?? DEFAULT_MAX_WISP_STREAMS_TOTAL;
+	const allowUdpStreams = input.allowUdpStreams ?? false;
+	const maxWebSocketConnectionBytes =
+		input.maxWebSocketConnectionBytes ?? DEFAULT_MAX_WEBSOCKET_CONNECTION_BYTES;
 
-  assertPositiveInteger("maxRequestBodyBytes", maxRequestBodyBytes);
-  assertPositiveInteger("maxResponseBodyBytes", maxResponseBodyBytes);
-  assertPositiveInteger("timeoutMs", timeoutMs);
+	assertPositiveInteger("maxRequestBodyBytes", maxRequestBodyBytes);
+	assertPositiveInteger("maxResponseBodyBytes", maxResponseBodyBytes);
+	assertPositiveInteger("timeoutMs", timeoutMs);
+	assertPositiveInteger("maxWispStreamsTotal", maxWispStreamsTotal);
+	assertPositiveInteger(
+		"maxWebSocketConnectionBytes",
+		maxWebSocketConnectionBytes
+	);
   if (!Number.isSafeInteger(maxRedirects) || maxRedirects < 0) {
     throw new TypeError("maxRedirects must be a non-negative safe integer");
   }
@@ -96,10 +114,13 @@ export function createGatewayPolicy(input: GatewayPolicyInput = {}): GatewayPoli
     allowLoopback,
     allowPrivateNetworks,
     maxRequestBodyBytes,
-    maxResponseBodyBytes,
-    timeoutMs,
-    maxRedirects,
-  };
+		maxResponseBodyBytes,
+		timeoutMs,
+		maxRedirects,
+		maxWispStreamsTotal,
+		allowUdpStreams,
+		maxWebSocketConnectionBytes,
+	};
 }
 
 function parseIPv4(address: string): [number, number, number, number] | null {
