@@ -249,6 +249,63 @@ function runWorkerCheck() {
 	});
 }
 
+function runIframeCheck() {
+	return new Promise((resolve, reject) => {
+		const frame = document.querySelector("#nested-frame");
+		if (!(frame instanceof HTMLIFrameElement)) {
+			reject(new Error("Nested iframe is missing"));
+			return;
+		}
+
+		let settled = false;
+		let sent = false;
+		const timeout = setTimeout(() => {
+			if (settled) return;
+			settled = true;
+			window.removeEventListener("message", onMessage);
+			frame.removeEventListener("load", sendMessage);
+			reject(new Error("Nested iframe message timed out"));
+		}, 10_000);
+
+		const finish = (callback, value) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timeout);
+			window.removeEventListener("message", onMessage);
+			frame.removeEventListener("load", sendMessage);
+			callback(value);
+		};
+
+		const sendMessage = () => {
+			if (sent || !frame.contentWindow) return;
+			sent = true;
+			frame.contentWindow.postMessage("parent-ping", "*");
+		};
+
+		const onMessage = (event) => {
+			if (event.data?.type !== "nested-iframe-reply") return;
+
+			const sameVirtualOrigin =
+				event.origin === event.data.childOrigin &&
+				event.data.receivedOrigin === event.data.childOrigin;
+			if (!sameVirtualOrigin) {
+				finish(reject, new Error("Nested iframe origin virtualization failed"));
+				return;
+			}
+
+			finish(resolve, `same-origin:1|origin:${event.origin}`);
+		};
+
+		window.addEventListener("message", onMessage);
+		frame.addEventListener("load", sendMessage, { once: true });
+		try {
+			if (frame.contentDocument?.readyState === "complete") sendMessage();
+		} catch {
+			// Wait for the load event if the browser keeps the nested document opaque.
+		}
+	});
+}
+
 async function runCompatibilityChecks() {
 	document.title = "Scramjet-NG Compatibility Fixture";
 	if (app) app.textContent = "Fixture loaded";
@@ -274,6 +331,7 @@ async function runCompatibilityChecks() {
 	setResult("storage-result", runStorageCheck());
 	setResult("dynamic-result", await runDynamicImportCheck());
 	setResult("worker-result", await runWorkerCheck());
+	setResult("iframe-result", await runIframeCheck());
 }
 
 runCompatibilityChecks().catch((error) => {
