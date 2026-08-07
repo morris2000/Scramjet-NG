@@ -127,6 +127,8 @@ managed iframe to the self-owned fixture.
 The live fixture currently covers:
 
 - document load, relative JSON fetch, POST echo, and readable streaming;
+- finite Server-Sent Events through native EventSource, including named events,
+  event IDs, stream close, and error handling;
 - WebSocket text and binary echo through the official rewrite, Libcurl, and Wisp
   layers;
 - SPA `pushState`, `popstate`, and back navigation inside the managed frame.
@@ -136,7 +138,9 @@ h2c upgrade headers while reserving WebSocket upgrades for its explicit
 `/socket` endpoint.
 
 The live Playwright checks are intentionally limited to the self-owned fixture;
-this composition server is not a production lifecycle manager.
+this composition server is not a production lifecycle manager. The SSE fixture
+uses a finite stream; long-lived reconnect and retry behavior remains follow-up
+coverage.
 
 ## Security boundary
 
