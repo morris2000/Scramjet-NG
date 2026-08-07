@@ -44,6 +44,8 @@ Self-owned compatibility fixture
   |-- HTTP, streaming, and POST endpoints
   |-- /events finite Server-Sent Events stream
   |-- /socket WebSocket text/binary echo
+  |-- /api/cookie Set-Cookie/request-cookie contract
+  |-- document.cookie + local/session storage checks
   |-- SPA History API controls
 ```
 
@@ -56,6 +58,13 @@ A fixture WebSocket is rewritten by the audited Scramjet runtime, carried by the
 browser transport over Wisp, and terminated by the fixture's explicit
 `/socket` upgrade handler. History `pushState` and back navigation stay
 inside the managed frame and expose the virtual target route to the fixture.
+
+The cookie path uses the audited controller `cookieJar`: a fixture
+`document.cookie` mutation is synchronized through the Service Worker, response
+`Set-Cookie` is accepted, and a later virtual request carries the resulting
+cookie without exposing it to the parent harness origin. The storage hooks
+namespace basic local/session keys by the virtual target host, so the fixture
+storage remains separate from the composition page.
 
 The Wisp transport carries browser network streams to the allowlisted fixture.
 The HTTP gateway remains available for controller route requests and applies the
