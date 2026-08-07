@@ -133,7 +133,14 @@ The live fixture currently covers:
   layers;
 - SPA `pushState`, `popstate`, and back navigation inside the managed frame;
 - basic `document.cookie` set/get, response `Set-Cookie`, request-cookie
-  round-trips, and local/session storage kept separate from the parent harness.
+  round-trips, and local/session storage kept separate from the parent harness;
+- same-origin dynamic module loading and a dedicated Worker text-message
+  round-trip through the official rewrite and Worker injection path.
+
+The dynamic import check uses a same-origin relative module and the Worker
+check uses a classic dedicated Worker. Module Workers, SharedWorkers, Worklets,
+binary Worker messages, and Worker lifecycle/error behavior remain follow-up
+coverage.
 
 The live cookie check allows a brief asynchronous handoff after a
 `document.cookie` mutation because the audited controller propagates cookie
