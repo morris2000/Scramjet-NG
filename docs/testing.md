@@ -47,6 +47,7 @@ Validate:
 - streaming responses
 - Wisp text and binary streams
 - direct fixture WebSocket text and binary echo
+- direct fixture SSE framing and stream completion
 - close codes and resource limits
 
 ### Browser Tests
@@ -60,6 +61,7 @@ Using Playwright and the self-owned fixture:
 - POST echo
 - streaming fetch
 - WebSocket text and binary frames through Libcurl/Wisp
+- EventSource open, message, named event, event ID, error, and close lifecycle
 - SPA `pushState` and back navigation
 
 ## First Vertical Slice
@@ -76,15 +78,22 @@ runtime composition origin
     |
 self-owned compatibility fixture
     |-- HTTP/streaming/POST endpoints
+    |-- /events finite SSE endpoint
     |-- /socket WebSocket echo endpoint
     |-- SPA History API controls
 ```
 
-The fixture is local and does not depend on third-party websites. Its server also preserves ordinary HTTP requests that arrive with Chromium/libcurl's h2c upgrade headers while reserving WebSocket upgrades for `/socket`.
+The fixture is local and does not depend on third-party websites. Its server also
+preserves ordinary HTTP requests that arrive with Chromium/libcurl's h2c upgrade
+headers while reserving WebSocket upgrades for `/socket`.
+
+The SSE browser check intentionally uses a finite stream so the test can verify
+server-side close and native EventSource error handling without leaving a
+reconnect loop running.
 
 ## Future Coverage
 
-- SSE
+- long-lived SSE reconnect and retry behavior
 - dynamic import
 - Web Worker
 - iframe
