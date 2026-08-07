@@ -47,6 +47,7 @@ Self-owned compatibility fixture
   |-- /api/cookie Set-Cookie/request-cookie contract
   |-- /dynamic-module.js same-origin module endpoint
   |-- /worker.js dedicated Worker text/binary boundary
+  |-- /nested-frame.html nested document and postMessage boundary
   |-- document.cookie + local/session storage checks
   |-- SPA History API controls
 ```
@@ -73,6 +74,12 @@ Dynamic imports use the audited `$scramjet$import` hook and the upstream
 the audited Worker URL rewrite, while the Worker response goes through
 `rewriteWorkers()` so the injected runtime preserves the Worker message
 boundary.
+
+Nested iframe navigation is handled by the audited `rewriteHtml()` iframe
+path. The child fixture replies through `postMessage`; Scramjet's message
+wrapper carries the virtual origin and payload metadata, so the browser test
+can verify that both sides observe the virtual target origin rather than the
+composition harness origin.
 
 The Wisp transport carries browser network streams to the allowlisted fixture.
 The HTTP gateway remains available for controller route requests and applies the
