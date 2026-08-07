@@ -52,6 +52,17 @@ test.describe("Scramjet-NG compatibility runtime", () => {
 		);
 	});
 
+	test("keeps EventSource framing and close lifecycle through the proxy", async ({ page }) => {
+		await page.goto(`${proxyUrl}/`);
+		await expect(page.locator("#runtime-status")).toHaveAttribute("data-state", "ready");
+
+		const fixture = page.frameLocator("#scramjet-frame");
+		await expect(fixture.locator("#sse-result")).toHaveText(
+			"open:1|message:hello from fixture|named:world from fixture|id:2|closed:2",
+			{ timeout: 30_000 },
+		);
+	});
+
 	test("preserves SPA pushState and back navigation", async ({ page }) => {
 		await page.goto(`${proxyUrl}/`);
 		await expect(page.locator("#runtime-status")).toHaveAttribute("data-state", "ready");
