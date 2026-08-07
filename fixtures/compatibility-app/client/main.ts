@@ -249,6 +249,68 @@ function runWorkerCheck() {
 	});
 }
 
+async function runBlobUrlCheck() {
+	const blob = new Blob(["blob-body"], { type: "text/plain" });
+	const blobUrl = URL.createObjectURL(blob);
+
+	try {
+		const response = await fetch(blobUrl);
+		const body = await response.text();
+		const origin = new URL(blobUrl).origin;
+		if (!response.ok || body !== "blob-body" || origin !== window.location.origin) {
+			throw new Error("Blob URL virtualization contract failed");
+		}
+
+		return `origin:${origin}|body:${body}`;
+	} finally {
+		URL.revokeObjectURL(blobUrl);
+	}
+}
+
+async function runFileUploadCheck() {
+	const form = new FormData();
+	const file = new File(["hello upload"], "fixture.txt", { type: "text/plain" });
+	form.set("description", "fixture upload");
+	form.set("file", file);
+
+	const response = await fetch("/api/upload", {
+		method: "POST",
+		body: form,
+	});
+	const result = await response.json();
+	if (
+		!response.ok ||
+		result.description !== "fixture upload" ||
+		result.fileName !== "fixture.txt" ||
+		result.fileType !== "text/plain" ||
+		result.fileBytes !== file.size ||
+		result.fileBody !== "hello upload"
+	) {
+		throw new Error("File upload contract failed");
+	}
+
+	return `name:${result.fileName}|type:${result.fileType}|bytes:${result.fileBytes}|body:${result.fileBody}`;
+}
+
+async function runAbortControllerCheck() {
+	const controller = new AbortController();
+	const pending = fetch("/api/slow", { signal: controller.signal });
+	setTimeout(() => controller.abort(), 100);
+
+	let abortError;
+	try {
+		await pending;
+	} catch (error) {
+		abortError = error;
+	}
+
+	if (!controller.signal.aborted || abortError?.name !== "AbortError") {
+		throw new Error("AbortController contract failed");
+	}
+
+	return `aborted:1|error:${abortError.name}`;
+}
+
 function runIframeCheck() {
 	return new Promise((resolve, reject) => {
 		const frame = document.querySelector("#nested-frame");
@@ -331,6 +393,9 @@ async function runCompatibilityChecks() {
 	setResult("storage-result", runStorageCheck());
 	setResult("dynamic-result", await runDynamicImportCheck());
 	setResult("worker-result", await runWorkerCheck());
+	setResult("blob-result", await runBlobUrlCheck());
+	setResult("upload-result", await runFileUploadCheck());
+	setResult("abort-result", await runAbortControllerCheck());
 	setResult("iframe-result", await runIframeCheck());
 }
 
