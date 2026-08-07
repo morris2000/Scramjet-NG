@@ -17,9 +17,10 @@ The implemented harness provides:
 - Wisp transport setup;
 - Playwright browser regression tests for fixture loading, relative fetch,
   POST echo, streaming response, finite SSE EventSource behavior, text/binary
-  WebSocket frames, and SPA History API navigation;
-- direct fixture regression tests independent of the browser for WebSocket echo
-  and SSE framing/stream completion.
+  WebSocket frames, SPA History API navigation, cookie round-trips, and
+  parent-origin storage isolation;
+- direct fixture regression tests independent of the browser for WebSocket echo,
+  SSE framing/stream completion, and the cookie header contract.
 
 ## Security
 
@@ -35,8 +36,11 @@ treating every upgrade as a WebSocket.
 
 The current browser harness exercises the audited runtime assets and the
 Libcurl/Wisp path only. The SSE coverage intentionally uses a finite stream and
-does not yet claim long-lived reconnect/retry compatibility. Workers, dynamic
-imports, cookies, and storage remain future coverage.
+does not yet claim long-lived reconnect/retry compatibility. Cookie coverage is
+limited to basic `document.cookie`, `Set-Cookie`, and request-cookie behavior;
+the controller's cookie sync is asynchronous and advanced cookie attributes,
+partitioning, storage persistence, and broader cross-origin cases remain
+follow-up work.
 
 ## Rollback
 
