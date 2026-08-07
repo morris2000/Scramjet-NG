@@ -16,6 +16,7 @@ The project focuses on:
 - WebSocket
 - Dynamic import
 - Web Worker
+- Nested iframe and postMessage
 - Storage and origin virtualization
 - Browser API compatibility testing
 
@@ -44,7 +45,8 @@ The local runtime slice now contains four explicit boundaries:
 - `fixtures/compatibility-app/` provides the self-owned dynamic test app,
   including streaming and POST fetches, finite SSE, text/binary WebSocket echo,
   SPA History API controls, cookie round-trips, virtual-origin storage isolation,
-  dynamic module loading, and dedicated Worker message echo.
+  dynamic module loading, dedicated Worker message echo, and nested iframe
+  postMessage origin checks.
 
 The adapter boundary mirrors the audited upstream API:
 
@@ -70,8 +72,8 @@ pnpm e2e
 The browser regression currently verifies the self-owned fixture through the
 complete official network paths: browser rewrite, Libcurl transport, Wisp,
 gateway policy, finite SSE framing, WebSocket text/binary frames, SPA
-`pushState`/back navigation, cookie request/response round-trips, parent-origin storage isolation, dynamic
-import, and Worker script rewriting with message round-trip.
+`pushState`/back navigation, cookie request/response round-trips, parent-origin storage isolation, dynamic import, Worker script rewriting with
+message round-trip, and nested iframe postMessage origin checks.
 
 The gateway is intentionally allowlist-first. Production policy rejects
 loopback, private, link-local, metadata, and reserved addresses; a local
