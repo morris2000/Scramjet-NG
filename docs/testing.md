@@ -14,6 +14,7 @@ pnpm check:sync
 pnpm check:gateway
 pnpm check:wisp
 pnpm check:composition
+pnpm check:fixture
 ```
 
 The live browser slice requires the pinned assets and a Playwright browser:
@@ -45,6 +46,7 @@ Validate:
 - HTTP forwarding
 - streaming responses
 - Wisp text and binary streams
+- direct fixture WebSocket text and binary echo
 - close codes and resource limits
 
 ### Browser Tests
@@ -57,6 +59,8 @@ Using Playwright and the self-owned fixture:
 - relative fetch
 - POST echo
 - streaming fetch
+- WebSocket text and binary frames through Libcurl/Wisp
+- SPA `pushState` and back navigation
 
 ## First Vertical Slice
 
@@ -71,15 +75,16 @@ runtime composition origin
     |-- /wisp/ WebSocket transport
     |
 self-owned compatibility fixture
+    |-- HTTP/streaming/POST endpoints
+    |-- /socket WebSocket echo endpoint
+    |-- SPA History API controls
 ```
 
-The fixture is local and does not depend on third-party websites.
+The fixture is local and does not depend on third-party websites. Its server also preserves ordinary HTTP requests that arrive with Chromium/libcurl's h2c upgrade headers while reserving WebSocket upgrades for `/socket`.
 
 ## Future Coverage
 
-- SPA navigation and History API
 - SSE
-- browser WebSocket text/binary assertions
 - dynamic import
 - Web Worker
 - iframe
