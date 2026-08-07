@@ -114,6 +114,25 @@ test.describe("Scramjet-NG compatibility runtime", () => {
 		);
 	});
 
+	test("preserves Blob URLs, file uploads, and AbortController", async ({ page }) => {
+		await page.goto(`${proxyUrl}/`);
+		await expect(page.locator("#runtime-status")).toHaveAttribute("data-state", "ready");
+
+		const fixture = page.frameLocator("#scramjet-frame");
+		await expect(fixture.locator("#blob-result")).toHaveText(
+			"origin:http://127.0.0.1:3000|body:blob-body",
+			{ timeout: 30_000 },
+		);
+		await expect(fixture.locator("#upload-result")).toHaveText(
+			"name:fixture.txt|type:text/plain|bytes:12|body:hello upload",
+			{ timeout: 30_000 },
+		);
+		await expect(fixture.locator("#abort-result")).toHaveText(
+			"aborted:1|error:AbortError",
+			{ timeout: 30_000 },
+		);
+	});
+
 	test("preserves SPA pushState and back navigation", async ({ page }) => {
 		await page.goto(`${proxyUrl}/`);
 		await expect(page.locator("#runtime-status")).toHaveAttribute("data-state", "ready");
