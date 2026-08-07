@@ -21,6 +21,9 @@
 - Nested iframe fixture document with parent/child `postMessage` virtual-origin
   regression.
 - Direct fixture coverage for the nested iframe document contract.
+- Blob URL create/fetch/revoke and native multipart File upload regressions.
+- App-facing AbortController compatibility shim with partial-support coverage
+  for standard `AbortError` behavior.
 - A small h2c HTTP fallback in the fixture so ordinary Chromium/libcurl
   requests remain compatible when the fixture also owns a WebSocket upgrade
   listener.
