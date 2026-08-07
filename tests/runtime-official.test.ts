@@ -161,6 +161,7 @@ test("binds the official browser globals and Service Worker flow", async () => {
 		[
 			DEFAULT_BROWSER_RUNTIME_ASSETS.scramjetBundlePath,
 			DEFAULT_BROWSER_RUNTIME_ASSETS.controllerApiPath,
+			DEFAULT_BROWSER_RUNTIME_ASSETS.scramjetUtilsBundlePath,
 			DEFAULT_BROWSER_RUNTIME_ASSETS.transportPath,
 		]
 	);
