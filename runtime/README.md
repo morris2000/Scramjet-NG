@@ -110,9 +110,10 @@ const policy = createGatewayPolicy({
 The Wisp upgrade boundary is available through the pinned
 `@mercuryworkshop/wisp-js@0.4.1` server dependency. It accepts only `/wisp/`,
 applies the same allowlist and development loopback policy, disables UDP by
-default, and enforces a total stream/connection limit. Browser asset
-composition is provided by `runtime/composition/`; DNS-to-connection pinning
-remains separate follow-up work.
+default, and enforces a total stream/connection limit. Browser WebSocket
+connections use the audited Scramjet rewrite and selected browser transport;
+the fixture regression covers text and binary frames through the full
+Libcurl/Wisp path. DNS-to-connection pinning remains separate follow-up work.
 
 ## Browser composition
 
@@ -122,6 +123,17 @@ serves the application-owned runtime harness and pinned assets, forwards
 upgrade handler. The harness loads the audited browser globals, registers the
 Service Worker, creates the selected transport and controller, then navigates a
 managed iframe to the self-owned fixture.
+
+The live fixture currently covers:
+
+- document load, relative JSON fetch, POST echo, and readable streaming;
+- WebSocket text and binary echo through the official rewrite, Libcurl, and Wisp
+  layers;
+- SPA `pushState`, `popstate`, and back navigation inside the managed frame.
+
+The fixture server preserves ordinary Chromium/libcurl HTTP requests that carry
+h2c upgrade headers while reserving WebSocket upgrades for its explicit
+`/socket` endpoint.
 
 The live Playwright checks are intentionally limited to the self-owned fixture;
 this composition server is not a production lifecycle manager.
