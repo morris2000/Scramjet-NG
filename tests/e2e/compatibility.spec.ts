@@ -103,6 +103,17 @@ test.describe("Scramjet-NG compatibility runtime", () => {
 		);
 	});
 
+	test("preserves nested iframe messaging and virtual origin", async ({ page }) => {
+		await page.goto(`${proxyUrl}/`);
+		await expect(page.locator("#runtime-status")).toHaveAttribute("data-state", "ready");
+
+		const fixture = page.frameLocator("#scramjet-frame");
+		await expect(fixture.locator("#iframe-result")).toHaveText(
+			/same-origin:1\|origin:http:\/\/127\.0\.0\.1:3000/,
+			{ timeout: 30_000 },
+		);
+	});
+
 	test("preserves SPA pushState and back navigation", async ({ page }) => {
 		await page.goto(`${proxyUrl}/`);
 		await expect(page.locator("#runtime-status")).toHaveAttribute("data-state", "ready");
