@@ -48,6 +48,9 @@ Self-owned compatibility fixture
   |-- /dynamic-module.js same-origin module endpoint
   |-- /worker.js dedicated Worker text/binary boundary
   |-- /nested-frame.html nested document and postMessage boundary
+  |-- /runtime-compat.js app-facing abort compatibility shim
+  |-- /api/upload multipart File upload endpoint
+  |-- /api/slow delayed response for cancellation checks
   |-- document.cookie + local/session storage checks
   |-- SPA History API controls
 ```
@@ -80,6 +83,16 @@ path. The child fixture replies through `postMessage`; Scramjet's message
 wrapper carries the virtual origin and payload metadata, so the browser test
 can verify that both sides observe the virtual target origin rather than the
 composition harness origin.
+
+Blob URL handling follows Scramjet's audited object-URL hooks, so a Blob
+created by the fixture can be fetched and revoked while retaining the virtual
+target origin. Native `FormData` and `File` values are passed through the
+transport and validated by a bounded multipart parser in the self-owned fixture.
+
+The pinned controller currently removes `AbortSignal` before its transport
+request. The fixture's small `runtime-compat.js` wrapper preserves the
+app-facing `AbortError` observable while leaving full transport cancellation and
+request cleanup as follow-up runtime work.
 
 The Wisp transport carries browser network streams to the allowlisted fixture.
 The HTTP gateway remains available for controller route requests and applies the
