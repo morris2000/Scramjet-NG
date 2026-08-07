@@ -19,7 +19,8 @@ The implementation is in `runtime/adapter/`:
   contracts;
 - `adapter.ts` handles initialization, readiness, failure, retry, frame
   creation, navigation, and upstream URL delegation;
-- `official.ts` binds those contracts to the official browser-global scripts;
+- `official.ts` binds those contracts to the official browser-global scripts,
+  including the Scramjet Utils bundle;
 - `url.ts` centralizes target validation and rewrite metadata;
 - `index.ts` exposes the public adapter entrypoint.
 
@@ -33,6 +34,8 @@ creates the selected transport, and initializes the controller.
 
 - `manifest.ts` allowlists the expected Scramjet, controller, and transport
   paths;
+- `pins.ts` records reviewed package versions, dist paths, sizes, and hashes;
+- `sync.ts` downloads and verifies the pinned runtime files before writing;
 - `service-worker.ts` generates the application-owned `sw.js` entrypoint;
 - `server.ts` serves the generated Service Worker and only the manifest's
   configured files from an explicit asset root.
@@ -58,6 +61,7 @@ The default asset layout mirrors the official Scramjet bootstrap conventions:
 /sw.js
 /scram/scramjet.js
 /scram/scramjet.wasm
+/scram/scramjet-utils.js
 /controller/controller.api.js
 /controller/controller.inject.js
 /controller/controller.sw.js
