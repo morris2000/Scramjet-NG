@@ -63,6 +63,31 @@ test.describe("Scramjet-NG compatibility runtime", () => {
 		);
 	});
 
+	test("virtualizes cookies and storage away from the harness origin", async ({ page }) => {
+		await page.goto(`${proxyUrl}/`);
+		await expect(page.locator("#runtime-status")).toHaveAttribute("data-state", "ready");
+
+		const fixture = page.frameLocator("#scramjet-frame");
+		await expect(fixture.locator("#cookie-result")).toHaveText(
+			"document:1|request1:1|response:1|request2:2",
+			{ timeout: 30_000 },
+		);
+		await expect(fixture.locator("#storage-result")).toHaveText(
+			"local:local-value|session:session-value",
+			{ timeout: 30_000 },
+		);
+
+		const parentState = await page.evaluate(() => ({
+			cookie: document.cookie,
+			local: window.localStorage.getItem("fixture-local"),
+			session: window.sessionStorage.getItem("fixture-session"),
+		}));
+		expect(parentState.cookie).not.toContain("fixture_document=");
+		expect(parentState.cookie).not.toContain("fixture_server=");
+		expect(parentState.local).toBeNull();
+		expect(parentState.session).toBeNull();
+	});
+
 	test("preserves SPA pushState and back navigation", async ({ page }) => {
 		await page.goto(`${proxyUrl}/`);
 		await expect(page.locator("#runtime-status")).toHaveAttribute("data-state", "ready");
