@@ -10,10 +10,12 @@ export {
   type LookupHost,
 } from "./policy.ts";
 export {
-  createHttpGatewayServer,
-  listenHttpGatewayServer,
-  type GatewayFetch,
-  type HttpGatewayServerOptions,
+	attachGatewayUpgradeHandler,
+	createHttpGatewayServer,
+	createHttpGatewayRequestHandler,
+	listenHttpGatewayServer,
+	type GatewayFetch,
+	type HttpGatewayServerOptions,
   type ListeningHttpGateway,
 } from "./server.ts";
 export {
