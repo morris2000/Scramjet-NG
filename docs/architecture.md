@@ -45,6 +45,8 @@ Self-owned compatibility fixture
   |-- /events finite Server-Sent Events stream
   |-- /socket WebSocket text/binary echo
   |-- /api/cookie Set-Cookie/request-cookie contract
+  |-- /dynamic-module.js same-origin module endpoint
+  |-- /worker.js dedicated Worker text/binary boundary
   |-- document.cookie + local/session storage checks
   |-- SPA History API controls
 ```
@@ -65,6 +67,12 @@ The cookie path uses the audited controller `cookieJar`: a fixture
 cookie without exposing it to the parent harness origin. The storage hooks
 namespace basic local/session keys by the virtual target host, so the fixture
 storage remains separate from the composition page.
+
+Dynamic imports use the audited `$scramjet$import` hook and the upstream
+`rewriteUrl(..., { isModule: true })` path. Dedicated Worker construction uses
+the audited Worker URL rewrite, while the Worker response goes through
+`rewriteWorkers()` so the injected runtime preserves the Worker message
+boundary.
 
 The Wisp transport carries browser network streams to the allowlisted fixture.
 The HTTP gateway remains available for controller route requests and applies the
