@@ -10,8 +10,9 @@ This module owns the local HTTP serving contract for Scramjet browser assets.
   types.
 
 The server itself does not fetch packages from a CDN and does not act as the
-proxy gateway. `pins.ts` and `sync.ts` provide the separate, explicit asset
-acquisition step:
+proxy gateway. `runtime/composition/` can mount its request handler beside the
+gateway so both assets and proxied fixture traffic share one origin.
+`pins.ts` and `sync.ts` provide the separate, explicit asset acquisition step:
 
 - exact package versions and dist paths are recorded in `pins.ts`;
 - each file has an expected byte size and SHA-256 hash;
@@ -34,4 +35,3 @@ pnpm assets:sync
 Set `$env:SCRAMJET_ASSET_ROOT` to choose another output directory. The sync
 command requires network access and should be run only when the pinned hashes
 have been reviewed.
-
