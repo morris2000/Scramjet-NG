@@ -41,7 +41,15 @@ Runtime composition origin
   |
   v
 Self-owned compatibility fixture
+  |-- HTTP, streaming, and POST endpoints
+  |-- /socket WebSocket text/binary echo
+  |-- SPA History API controls
 ```
+
+A fixture WebSocket is rewritten by the audited Scramjet runtime, carried by the
+browser transport over Wisp, and terminated by the fixture's explicit
+`/socket` upgrade handler. History `pushState` and back navigation stay
+inside the managed frame and expose the virtual target route to the fixture.
 
 The Wisp transport carries browser network streams to the allowlisted fixture.
 The HTTP gateway remains available for controller route requests and applies the
