@@ -121,6 +121,19 @@ test("fixture serves dynamic module and Worker script contracts", async () => {
 	}
 });
 
+test("fixture serves the app-facing abort compatibility contract", async () => {
+	const fixture = await listenCompatibilityFixture();
+
+	try {
+		const response = await fetch(`${fixture.origin}/runtime-compat.js`);
+		assert.equal(response.status, 200);
+		assert.match(response.headers.get("content-type") ?? "", /javascript/);
+		assert.match(await response.text(), /AbortError/);
+	} finally {
+		await fixture.close();
+	}
+});
+
 test("fixture serves the nested iframe document contract", async () => {
 	const fixture = await listenCompatibilityFixture();
 
@@ -131,6 +144,47 @@ test("fixture serves the nested iframe document contract", async () => {
 		const body = await response.text();
 		assert.match(body, /id="nested-app"/);
 		assert.match(body, /nested-iframe-reply/);
+	} finally {
+		await fixture.close();
+	}
+});
+
+test("fixture accepts multipart file uploads", async () => {
+	const fixture = await listenCompatibilityFixture();
+
+	try {
+		const form = new FormData();
+		form.set("description", "direct upload");
+		form.set("file", new File(["direct file"], "direct.txt", { type: "text/plain" }));
+		const response = await fetch(`${fixture.origin}/api/upload`, {
+			method: "POST",
+			body: form,
+		});
+
+		assert.equal(response.status, 200);
+		assert.deepEqual(await response.json(), {
+			description: "direct upload",
+			fileName: "direct.txt",
+			fileType: "text/plain",
+			fileBytes: 11,
+			fileBody: "direct file",
+			fileSha256: "2c735545895a65a94dd6f3b3fc3624280771fa64a263d6ed182a602ee7c04d6c",
+		});
+	} finally {
+		await fixture.close();
+	}
+});
+
+test("fixture exposes a cancellable slow response", async () => {
+	const fixture = await listenCompatibilityFixture();
+
+	try {
+		const controller = new AbortController();
+		const pending = fetch(`${fixture.origin}/api/slow`, { signal: controller.signal });
+		controller.abort();
+		await assert.rejects(pending, (error: unknown) =>
+			error instanceof DOMException && error.name === "AbortError"
+		);
 	} finally {
 		await fixture.close();
 	}
