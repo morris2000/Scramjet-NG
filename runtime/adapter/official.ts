@@ -10,6 +10,7 @@ export interface BrowserRuntimeAssets {
 	serviceWorkerPath: string;
 	scramjetBundlePath: string;
 	scramjetWasmPath: string;
+	scramjetUtilsBundlePath: string;
 	controllerApiPath: string;
 	controllerInjectPath: string;
 	controllerSwPath: string;
@@ -21,6 +22,7 @@ export const DEFAULT_BROWSER_RUNTIME_ASSETS: BrowserRuntimeAssets = {
 	serviceWorkerPath: "/sw.js",
 	scramjetBundlePath: "/scram/scramjet.js",
 	scramjetWasmPath: "/scram/scramjet.wasm",
+	scramjetUtilsBundlePath: "/scram/scramjet-utils.js",
 	controllerApiPath: "/controller/controller.api.js",
 	controllerInjectPath: "/controller/controller.inject.js",
 	controllerSwPath: "/controller/controller.sw.js",
@@ -227,9 +229,14 @@ export function createBrowserScramjetBindings(
 
 	const ensureRuntimeScripts = async () => {
 		if (!runtimeScripts) {
-			runtimeScripts = (async () => {
+				runtimeScripts = (async () => {
 				await loadScript(globalObject, assets.scramjetBundlePath, loadedScripts);
 				await loadScript(globalObject, assets.controllerApiPath, loadedScripts);
+				await loadScript(
+					globalObject,
+					assets.scramjetUtilsBundlePath,
+					loadedScripts
+				);
 				await loadScript(globalObject, assets.transportPath, loadedScripts);
 			})();
 		}
