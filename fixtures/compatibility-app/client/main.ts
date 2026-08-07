@@ -1,24 +1,45 @@
-async function runCompatibilityChecks() {
-  const json = await fetch("/api/json");
-  console.log("json", await json.json());
+const app = document.querySelector("#app");
 
-  const stream = await fetch("/stream");
-  const reader = stream.body?.getReader();
-
-  if (reader) {
-    while (true) {
-      const result = await reader.read();
-      if (result.done) break;
-      console.log(new TextDecoder().decode(result.value));
-    }
-  }
-
-  const echo = await fetch("/api/echo", {
-    method: "POST",
-    body: "hello scramjet-ng",
-  });
-
-  console.log("echo", await echo.json());
+function setResult(id, value) {
+	const element = document.querySelector(`#${id}`);
+	if (element) element.textContent = value;
 }
 
-runCompatibilityChecks().catch(console.error);
+async function readStream() {
+	const response = await fetch("/stream");
+	if (!response.body) throw new Error("Streaming response has no body");
+
+	const reader = response.body.getReader();
+	const chunks = [];
+	while (true) {
+		const result = await reader.read();
+		if (result.done) break;
+		chunks.push(new TextDecoder().decode(result.value));
+	}
+	return chunks;
+}
+
+async function runCompatibilityChecks() {
+	document.title = "Scramjet-NG Compatibility Fixture";
+	if (app) app.textContent = "Fixture loaded";
+
+	const jsonResponse = await fetch("/api/json");
+	const json = await jsonResponse.json();
+	setResult("relative-result", JSON.stringify(json));
+
+	const chunks = await readStream();
+	setResult("stream-result", `${chunks.length}:${chunks.join("")}`);
+
+	const echoResponse = await fetch("/api/echo", {
+		method: "POST",
+		headers: { "content-type": "text/plain" },
+		body: "hello scramjet-ng",
+	});
+	setResult("echo-result", JSON.stringify(await echoResponse.json()));
+}
+
+runCompatibilityChecks().catch((error) => {
+	const message = error instanceof Error ? error.message : String(error);
+	setResult("error-result", message);
+	console.error(error);
+});
