@@ -98,6 +98,58 @@ async function runWebSocketCheck() {
 	});
 }
 
+async function runEventSourceCheck() {
+	return new Promise((resolve, reject) => {
+		const source = new EventSource("/events");
+		let opened = false;
+		let messageData;
+		let namedData;
+		let namedId;
+		let done = false;
+		let settled = false;
+		const timeout = setTimeout(() => {
+			if (settled) return;
+			settled = true;
+			source.close();
+			reject(new Error("EventSource stream timed out"));
+		}, 10_000);
+
+		const finish = (callback, value) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timeout);
+			callback(value);
+		};
+
+		source.addEventListener("open", () => {
+			opened = true;
+		});
+		source.addEventListener("message", (event) => {
+			messageData = event.data;
+		});
+		source.addEventListener("named", (event) => {
+			namedData = event.data;
+			namedId = event.lastEventId;
+		});
+		source.addEventListener("done", (event) => {
+			done = event.data === "complete";
+		});
+		source.addEventListener("error", () => {
+			if (!opened || !done || messageData !== "hello from fixture" || namedData !== "world from fixture") {
+				source.close();
+				finish(reject, new Error("Unexpected EventSource lifecycle"));
+				return;
+			}
+
+			source.close();
+			finish(
+				resolve,
+				`open:1|message:${messageData}|named:${namedData}|id:${namedId}|closed:${source.readyState}`,
+			);
+		});
+	});
+}
+
 async function runCompatibilityChecks() {
 	document.title = "Scramjet-NG Compatibility Fixture";
 	if (app) app.textContent = "Fixture loaded";
@@ -118,6 +170,7 @@ async function runCompatibilityChecks() {
 	setResult("echo-result", JSON.stringify(await echoResponse.json()));
 
 	setResult("websocket-result", await runWebSocketCheck());
+	setResult("sse-result", await runEventSourceCheck());
 }
 
 runCompatibilityChecks().catch((error) => {
