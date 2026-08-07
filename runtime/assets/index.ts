@@ -9,6 +9,12 @@ export {
 	createRuntimeAssetServer,
 	listenRuntimeAssetServer,
 } from "./server.ts";
+export {
+	DEFAULT_RUNTIME_ASSET_CDN,
+	DEFAULT_SCRAMJET_RUNTIME_PINS,
+	getPinnedRuntimePackages,
+} from "./pins.ts";
+export { syncRuntimeAssets } from "./sync.ts";
 export type {
 	RuntimeAssetDescriptor,
 	RuntimeAssetManifest,
@@ -22,4 +28,14 @@ export type {
 	RuntimeAssetServer,
 	RuntimeAssetServerOptions,
 } from "./server.ts";
+export type {
+	PinnedRuntimeFile,
+	PinnedRuntimePackage,
+	ScramjetRuntimePins,
+} from "./pins.ts";
+export type {
+	RuntimeAssetSyncOptions,
+	RuntimeAssetSyncResult,
+	SyncedRuntimeAsset,
+} from "./sync.ts";
 
