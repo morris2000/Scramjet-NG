@@ -27,6 +27,31 @@ The implementation is in `runtime/adapter/`:
 browser page. It loads same-origin runtime assets, registers the Service Worker,
 creates the selected transport, and initializes the controller.
 
+## Runtime asset server
+
+`runtime/assets/` provides the local serving contract for those browser assets:
+
+- `manifest.ts` allowlists the expected Scramjet, controller, and transport
+  paths;
+- `service-worker.ts` generates the application-owned `sw.js` entrypoint;
+- `server.ts` serves the generated Service Worker and only the manifest's
+  configured files from an explicit asset root.
+
+The server does not download or invent upstream runtime bundles. The asset root
+must contain built files using the official layout below. This keeps package
+version selection and licensing explicit while still making the browser serving
+boundary testable.
+
+Example:
+
+```ts
+const runtime = await listenRuntimeAssetServer({
+  root: "./runtime-assets",
+});
+
+console.log(runtime.origin);
+```
+
 The default asset layout mirrors the official Scramjet bootstrap conventions:
 
 ```text
