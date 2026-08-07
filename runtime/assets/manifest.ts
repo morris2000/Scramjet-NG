@@ -105,6 +105,11 @@ export function createRuntimeAssetManifest(
 			"scramjetWasmPath"
 		),
 		createDescriptor(
+			assets.scramjetUtilsBundlePath,
+			"application/javascript",
+			"scramjetUtilsBundlePath"
+		),
+		createDescriptor(
 			assets.controllerApiPath,
 			"application/javascript",
 			"controllerApiPath"
