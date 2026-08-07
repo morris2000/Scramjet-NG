@@ -15,8 +15,20 @@
 | Dynamic import | ✓ |  |  | Same-origin relative module is rewritten and evaluated through the official module path | `tests/e2e/compatibility.spec.ts` |
 | Web Worker | ✓ |  |  | Classic dedicated Worker script is rewritten/injected and completes a text message round-trip | `tests/e2e/compatibility.spec.ts` |
 | Nested iframe / postMessage | ✓ |  |  | Same-origin nested document completes a parent/child round-trip and reports the virtual target origin | `tests/fixture.test.ts`, `tests/e2e/compatibility.spec.ts` |
+| Blob URL | ✓ |  |  | `URL.createObjectURL`, fetch, and revoke preserve the virtual target origin and body | `tests/e2e/compatibility.spec.ts` |
+| Multipart File upload | ✓ |  |  | Native `FormData` and `File` metadata/body cross the proxy unchanged | `tests/fixture.test.ts`, `tests/e2e/compatibility.spec.ts` |
+| AbortController fetch |  | ✓ |  | App-facing shim returns standard `AbortError`; pinned controller transport cancellation remains incomplete | `tests/fixture.test.ts`, `tests/e2e/compatibility.spec.ts` |
 | Storage virtualization | ✓ |  |  | Basic local/session key operations are namespaced by the virtual target host; parent harness storage remains isolated | `tests/e2e/compatibility.spec.ts` |
 | Cookie handling | ✓ |  |  | Basic `document.cookie`, response `Set-Cookie`, and subsequent request-cookie round-trips are covered | `tests/fixture.test.ts`, `tests/e2e/compatibility.spec.ts` |
+
+The Blob URL assertion covers a same-origin virtual target. The upload assertion
+uses a small text `File`; size limits, binary content, resumable uploads, and
+streaming multipart bodies remain additional coverage. AbortController is
+currently marked partial because the fixture shim restores the app-facing error
+contract while the pinned controller drops the signal before the transport
+layer. Full transport cancellation and request cleanup remain additional
+coverage.
+
 The dynamic import and Worker assertions cover same-origin relative module
 loading and a classic dedicated Worker with text messages. The nested iframe
 assertion covers a same-origin child document and a parent/child message
