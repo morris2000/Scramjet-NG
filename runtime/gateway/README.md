@@ -26,5 +26,28 @@ const policy = createGatewayPolicy({
 });
 ```
 
-This slice intentionally does not implement Wisp/WebSocket forwarding,
-socket-level DNS pinning, or structured audit logging yet.
+This module still does not implement socket-level DNS pinning or structured
+audit logging yet.
+
+## Wisp upgrade
+
+The Wisp upgrade boundary is now available through the official
+`@mercuryworkshop/wisp-js@0.4.1` server package:
+
+```ts
+const upgrade = await createOfficialWispUpgradeHandler({ policy });
+const gateway = await listenHttpGatewayServer({ policy, upgrade });
+```
+
+Only the exact `/wisp/` endpoint is accepted. The handler configures Wisp's
+hostname allowlist, direct-IP policy, private/loopback restrictions, TCP/UDP
+switches, total stream limit, and raw WebSocket connection-byte limit. UDP is
+disabled by default.
+
+The Wisp package's `stream_limit_per_host` option is left disabled because
+version `0.4.1` iterates its internal streams object as if it were an array;
+the working total-per-connection limit remains enabled. Direct Wisp wsproxy
+paths such as `/wisp/host:port` are intentionally not accepted in this slice.
+
+The Wisp server package is AGPL-3.0 and is a server-only dependency; it is not
+included in the browser runtime asset bundle.
