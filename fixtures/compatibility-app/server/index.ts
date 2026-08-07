@@ -105,6 +105,26 @@ async function handleFixtureRequest(
 		return;
 	}
 
+	if (url.pathname === "/events" && request.method === "GET") {
+		response.writeHead(200, {
+			"content-type": "text/event-stream; charset=utf-8",
+			"cache-control": "no-cache, no-store",
+			"connection": "keep-alive",
+			"transfer-encoding": "chunked",
+		});
+		response.write(": fixture connected\n\n");
+		response.write("id: 1\ndata: hello from fixture\n\n");
+		setTimeout(
+			() => response.write("event: named\nid: 2\ndata: world from fixture\n\n"),
+			25
+		);
+		setTimeout(() => {
+			response.write("event: done\nid: 3\ndata: complete\n\n");
+			response.end();
+		}, 50);
+		return;
+	}
+
 	if (url.pathname === "/api/echo" && request.method === "POST") {
 		try {
 			const body = await readBody(request);
@@ -271,6 +291,7 @@ function writeFixtureHtml(response: ServerResponse): void {
     <dt>Streaming fetch</dt><dd id="stream-result">pending</dd>
     <dt>POST echo</dt><dd id="echo-result">pending</dd>
     <dt>WebSocket</dt><dd id="websocket-result">pending</dd>
+    <dt>Server-Sent Events</dt><dd id="sse-result">pending</dd>
     <dt>Error</dt><dd id="error-result"></dd>
   </dl>
   <script src="/main.js"></script>
