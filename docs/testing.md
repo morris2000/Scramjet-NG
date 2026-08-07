@@ -51,6 +51,8 @@ Validate:
 - direct fixture cookie header and `Set-Cookie` contract
 - direct fixture dynamic module and Worker script responses
 - direct fixture nested iframe document contract
+- direct fixture runtime compatibility asset, multipart upload, and slow-response
+  cancellation contracts
 - close codes and resource limits
 
 ### Browser Tests
@@ -72,6 +74,9 @@ Using Playwright and the self-owned fixture:
   round-trip
 - same-origin nested iframe loading and parent/child `postMessage` virtual-origin
   assertion
+- Blob URL create/fetch/revoke
+- native `FormData`/`File` multipart upload
+- app-facing `AbortController` cancellation and standard `AbortError`
 - SPA `pushState` and back navigation
 
 ## First Vertical Slice
@@ -94,6 +99,9 @@ self-owned compatibility fixture
     |-- /dynamic-module.js same-origin module endpoint
     |-- /worker.js dedicated Worker endpoint
     |-- /nested-frame.html nested document and postMessage round-trip
+    |-- /runtime-compat.js app-facing AbortController compatibility shim
+    |-- /api/upload multipart File upload endpoint
+    |-- /api/slow delayed response for cancellation checks
     |-- document.cookie + local/session storage checks
     |-- SPA History API controls
 ```
@@ -111,9 +119,9 @@ asserting the next request.
 ## Future Coverage
 
 - long-lived SSE reconnect and retry behavior
-- Blob URL
-- file upload
-- AbortController
+- transport-level AbortSignal propagation and request cleanup
+- binary and large multipart uploads, upload progress, and resumable upload
+  behavior
 - cookie expiry, domain/path edge cases, partitioning, and third-party policy
 - module Worker, SharedWorker, Worklet, Worker lifecycle/error cases, and
   binary Worker messages
