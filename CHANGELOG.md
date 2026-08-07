@@ -16,6 +16,8 @@
   `document.cookie`, `Set-Cookie`, and subsequent request-cookie round-trips.
 - Browser regression for host-namespaced local/session storage and isolation from
   the parent harness origin.
+- Browser regression for same-origin dynamic module loading.
+- Browser regression for classic dedicated Worker rewriting and text messages.
 - A small h2c HTTP fallback in the fixture so ordinary Chromium/libcurl
   requests remain compatible when the fixture also owns a WebSocket upgrade
   listener.
