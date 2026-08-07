@@ -48,6 +48,7 @@ Validate:
 - Wisp text and binary streams
 - direct fixture WebSocket text and binary echo
 - direct fixture SSE framing and stream completion
+- direct fixture cookie header and `Set-Cookie` contract
 - close codes and resource limits
 
 ### Browser Tests
@@ -62,6 +63,8 @@ Using Playwright and the self-owned fixture:
 - streaming fetch
 - WebSocket text and binary frames through Libcurl/Wisp
 - EventSource open, message, named event, event ID, error, and close lifecycle
+- basic `document.cookie` set/get and response/request cookie round-trips
+- local/session storage key operations and parent harness isolation
 - SPA `pushState` and back navigation
 
 ## First Vertical Slice
@@ -80,6 +83,8 @@ self-owned compatibility fixture
     |-- HTTP/streaming/POST endpoints
     |-- /events finite SSE endpoint
     |-- /socket WebSocket echo endpoint
+    |-- /api/cookie Set-Cookie/request-cookie endpoint
+    |-- document.cookie + local/session storage checks
     |-- SPA History API controls
 ```
 
@@ -89,7 +94,9 @@ headers while reserving WebSocket upgrades for `/socket`.
 
 The SSE browser check intentionally uses a finite stream so the test can verify
 server-side close and native EventSource error handling without leaving a
-reconnect loop running.
+reconnect loop running. The cookie browser check similarly allows the official
+controller's asynchronous Service Worker cookie-sync handoff to complete before
+asserting the next request.
 
 ## Future Coverage
 
@@ -100,6 +107,7 @@ reconnect loop running.
 - Blob URL
 - file upload
 - AbortController
-- cookies and storage virtualization
+- cookie expiry, domain/path edge cases, partitioning, and third-party policy
+- broader cross-origin storage and frame isolation cases
 
 Untested features are not marked as supported.
