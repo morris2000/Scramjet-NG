@@ -121,6 +121,7 @@ socket-level DNS pinning and structured audit logging are still pending.
 or close a transport; those resource operations belong in an explicit
 transport lifecycle contract when concrete runtime bindings are wired.
 
-The binding only wires browser runtime assets. Scramjet-NG still needs a proxy
-gateway, Wisp endpoint, Service Worker bundle, and served runtime assets before
-the Playwright fixture can be loaded through a live proxy.
+The binding only wires browser runtime assets. The HTTP gateway is currently a
+standalone slice; Scramjet-NG still needs Wisp/WebSocket transport and final
+composition of the adapter, gateway, Service Worker, and fixture before the
+Playwright fixture can be loaded through a live proxy.
