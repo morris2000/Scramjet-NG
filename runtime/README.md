@@ -131,7 +131,15 @@ The live fixture currently covers:
   event IDs, stream close, and error handling;
 - WebSocket text and binary echo through the official rewrite, Libcurl, and Wisp
   layers;
-- SPA `pushState`, `popstate`, and back navigation inside the managed frame.
+- SPA `pushState`, `popstate`, and back navigation inside the managed frame;
+- basic `document.cookie` set/get, response `Set-Cookie`, request-cookie
+  round-trips, and local/session storage kept separate from the parent harness.
+
+The live cookie check allows a brief asynchronous handoff after a
+`document.cookie` mutation because the audited controller propagates cookie
+synchronization through a Service Worker message channel. Advanced cookie
+attributes, partitioning, and long-lived storage policy remain follow-up
+coverage.
 
 The fixture server preserves ordinary Chromium/libcurl HTTP requests that carry
 h2c upgrade headers while reserving WebSocket upgrades for its explicit
