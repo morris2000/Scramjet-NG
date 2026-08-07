@@ -14,6 +14,7 @@ import {
   type LookupHost,
 } from "./policy.ts";
 import { createScramjetProxyPath, parseScramjetProxyUrl, type ScramjetProxyRoute } from "./url.ts";
+import type { GatewayUpgradeHandler } from "./upgrade.ts";
 
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
@@ -53,9 +54,10 @@ export type GatewayFetch = (
 export interface HttpGatewayServerOptions {
   readonly proxyOrigin?: string;
   readonly prefix?: string;
-  readonly policy: GatewayPolicy;
-  readonly fetch?: GatewayFetch;
-  readonly lookup?: LookupHost;
+	readonly policy: GatewayPolicy;
+	readonly fetch?: GatewayFetch;
+	readonly lookup?: LookupHost;
+	readonly upgrade?: GatewayUpgradeHandler;
 }
 
 export interface ListeningHttpGateway {
@@ -116,239 +118,360 @@ async function readRequestBody(
 
   for await (const chunk of request) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-    total += buffer.byteLength;
-    if (total > maxBytes) {
-      throw new GatewayRequestError(413, "request_body_too_large", "Request body exceeds the configured limit");
-    }
-    chunks.push(buffer);
-  }
-
-  return Buffer.concat(chunks, total);
+  …3396 tokens truncated…"Wisp connection failed"));
+		};
+	});
 }
 
-function setResponseHeaders(
-  response: ServerResponse,
-  upstream: Response,
-  route: ScramjetProxyRoute,
-  targetUrl: URL,
-): void {
-  const location = upstream.headers.get("location");
-  for (const [name, value] of upstream.headers.entries()) {
-    const normalizedName = name.toLowerCase();
-    if (RESPONSE_HEADERS_TO_DROP.has(normalizedName) || normalizedName === "location") {
-      continue;
-    }
-    response.setHeader(name, value);
-  }
-
-  const setCookie = (upstream.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie?.();
-  if (setCookie?.length) {
-    response.setHeader("set-cookie", setCookie);
-  }
-
-  if (location) {
-    const nextTarget = new URL(location, targetUrl);
-    response.setHeader(
-      "location",
-      createScramjetProxyPath(nextTarget, route, route.prefix),
-    );
-  }
+function waitForWispMessage(stream: {
+	onmessage: (data: Uint8Array) => void;
+	onclose: (reason: number) => void;
+}): Promise<Uint8Array> {
+	return new Promise((resolve, reject) => {
+		const timer = setTimeout(() => reject(new Error("Wisp stream timed out")), 3000);
+		stream.onmessage = (data) => {
+			clearTimeout(timer);
+			resolve(data);
+		};
+		stream.onclose = (reason) => {
+			clearTimeout(timer);
+			reject(new Error(`Wisp stream closed: ${reason}`));
+		};
+	});
 }
 
-async function pipeResponseBody(
-  upstream: Response,
-  response: ServerResponse,
-  maxBytes: number,
-): Promise<void> {
-  if (!upstream.body) {
-    response.end();
-    return;
-  }
-
-  const declaredLength = upstream.headers.get("content-length");
-  if (declaredLength && Number.parseInt(declaredLength, 10) > maxBytes) {
-    await upstream.body.cancel("response body exceeds configured limit");
-    throw new GatewayRequestError(502, "response_body_too_large", "Response body exceeds the configured limit");
-  }
-
-  const reader = upstream.body.getReader();
-  let total = 0;
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-
-      const chunk = Buffer.from(value);
-      total += chunk.byteLength;
-      if (total > maxBytes) {
-        await reader.cancel("response body exceeds configured limit");
-        throw new GatewayRequestError(502, "response_body_too_large", "Response body exceeds the configured limit");
-      }
-
-      if (!response.write(chunk)) {
-        await once(response, "drain");
-      }
-    }
-
-    response.end();
-  } catch (error) {
-    if (response.headersSent && !response.destroyed) {
-      response.destroy(error instanceof Error ? error : new Error("Upstream response failed"));
-    }
-    throw error;
-  }
+function waitForWispClose(stream: {
+	onclose: (reason: number) => void;
+}): Promise<number> {
+	return new Promise((resolve, reject) => {
+		const timer = setTimeout(() => reject(new Error("Wisp close timed out")), 3000);
+		stream.onclose = (reason) => {
+			clearTimeout(timer);
+			resolve(reason);
+		};
+	});
 }
 
-function writeError(response: ServerResponse, error: unknown): void {
-  if (response.headersSent || response.destroyed) {
-    response.destroy(error instanceof Error ? error : undefined);
-    return;
-  }
+async function listenFixture(): Promise<ListeningFixture> {
+  const server = createServer(async (request, response) => {
+    const requestUrl = new URL(request.url ?? "/", "http://fixture.invalid");
 
-  const gatewayError = error instanceof GatewayRequestError
-    ? error
-    : error instanceof GatewayPolicyError
-      ? new GatewayRequestError(403, "target_rejected", "Upstream target rejected by gateway policy")
-      : new GatewayRequestError(502, "upstream_error", "Unable to reach upstream target");
-
-  response.statusCode = gatewayError.statusCode;
-  response.setHeader("content-type", "application/json; charset=utf-8");
-  response.end(JSON.stringify({ error: gatewayError.errorCode }));
-}
-
-async function handleGatewayRequest(
-  request: IncomingMessage,
-  response: ServerResponse,
-  options: Required<Pick<HttpGatewayServerOptions, "proxyOrigin" | "prefix">> & Omit<HttpGatewayServerOptions, "proxyOrigin" | "prefix">,
-): Promise<void> {
-  if (!request.url) {
-    throw new GatewayRequestError(400, "missing_request_url", "Request URL is required");
-  }
-
-  let route: ScramjetProxyRoute;
-  try {
-    route = parseScramjetProxyUrl(
-      new URL(request.url, options.proxyOrigin),
-      { prefix: options.prefix },
-    );
-  } catch {
-    throw new GatewayRequestError(404, "invalid_proxy_url", "Not a Scramjet proxy URL");
-  }
-
-  await validateGatewayTarget(route.targetUrl, options.policy, options.lookup);
-
-  const body = await readRequestBody(request, options.policy.maxRequestBodyBytes);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), options.policy.timeoutMs);
-
-  try {
-    const upstream = await getFetch(options.fetch)(route.targetUrl, {
-      method: request.method,
-      headers: requestHeaders(request),
-      body,
-      redirect: "manual",
-      signal: controller.signal,
-    });
-
-    if (REDIRECT_STATUS_CODES.has(upstream.status)) {
-      const location = upstream.headers.get("location");
-      if (location) {
-        if (options.policy.maxRedirects < 1) {
-          throw new GatewayRequestError(502, "redirect_limit", "Upstream redirect limit exceeded");
-        }
-        const nextTarget = new URL(location, route.targetUrl);
-        await validateGatewayTarget(nextTarget, options.policy, options.lookup);
-      }
+    if (requestUrl.pathname === "/json") {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ ok: true, query: requestUrl.searchParams.get("mode") }));
+      return;
     }
 
-    setResponseHeaders(response, upstream, route, route.targetUrl);
-    response.statusCode = upstream.status;
+    if (requestUrl.pathname === "/echo") {
+      const chunks: Buffer[] = [];
+      for await (const chunk of request) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      response.writeHead(200, { "content-type": "text/plain" });
+      response.end(`${request.method}:${request.headers["x-fixture-header"] ?? ""}:${Buffer.concat(chunks).toString("utf8")}`);
+      return;
+    }
 
-    if (request.method === "HEAD") {
+    if (requestUrl.pathname === "/stream") {
+      response.writeHead(200, { "content-type": "text/plain" });
+      response.write("first-");
+      setTimeout(() => response.end("second"), 20);
+      return;
+    }
+
+    if (requestUrl.pathname === "/redirect") {
+      response.writeHead(302, { location: "/json?mode=redirect" });
       response.end();
       return;
     }
 
-    await pipeResponseBody(
-      upstream,
-      response,
-      options.policy.maxResponseBodyBytes,
-    );
-  } catch (error) {
-    if (controller.signal.aborted) {
-      throw new GatewayRequestError(504, "upstream_timeout", "Upstream request timed out");
+    if (requestUrl.pathname === "/external-redirect") {
+      response.writeHead(302, { location: "http://example.com/not-allowed" });
+      response.end();
+      return;
     }
-    if (error instanceof GatewayRequestError) {
-      throw error;
+
+    if (requestUrl.pathname === "/slow") {
+      setTimeout(() => {
+        response.writeHead(200, { "content-type": "text/plain" });
+        response.end("late");
+      }, 100);
+      return;
     }
-    if (error instanceof GatewayPolicyError) {
-      throw new GatewayRequestError(403, "target_rejected", "Upstream target rejected by gateway policy");
-    }
-    throw new GatewayRequestError(502, "upstream_error", "Unable to reach upstream target");
-  } finally {
-    clearTimeout(timeout);
-  }
-}
 
-export function createHttpGatewayServer(options: HttpGatewayServerOptions): Server {
-  const normalizedOptions = {
-    ...options,
-    proxyOrigin: options.proxyOrigin ?? "http://127.0.0.1:8080",
-    prefix: options.prefix ?? "/~/sj/",
-    policy: createGatewayPolicy(options.policy),
-  } as Required<Pick<HttpGatewayServerOptions, "proxyOrigin" | "prefix">> & Omit<HttpGatewayServerOptions, "proxyOrigin" | "prefix">;
-
-  const listener: RequestListener = (request, response) => {
-    void handleGatewayRequest(request, response, normalizedOptions).catch((error) => {
-      writeError(response, error);
-    });
-  };
-
-  return createServer(listener);
-}
-
-export async function listenHttpGatewayServer(
-  options: HttpGatewayServerOptions & { host?: string; port?: number } ,
-): Promise<ListeningHttpGateway> {
-  const host = options.host ?? "127.0.0.1";
-  const port = options.port ?? 0;
-  const server = createHttpGatewayServer({
-    ...options,
-    proxyOrigin: options.proxyOrigin ?? `http://${host}:${port}`,
+    response.writeHead(404);
+    response.end("missing");
   });
 
   await new Promise<void>((resolve, reject) => {
-    const onError = (error: Error) => {
-      server.off("listening", onListening);
-      reject(error);
-    };
-    const onListening = () => {
-      server.off("error", onError);
-      resolve();
-    };
-    server.once("error", onError);
-    server.once("listening", onListening);
-    server.listen(port, host);
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
   });
 
   const address = server.address();
-  if (!address || typeof address === "string") {
-    await closeServer(server);
-    throw new Error("Gateway server did not expose a TCP address");
-  }
+  assert.ok(address && typeof address !== "string");
 
   return {
     server,
-    origin: `http://${host}:${address.port}`,
-    close: () => closeServer(server),
+    origin: `http://127.0.0.1:${address.port}`,
+    close: () => new Promise<void>((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    }),
   };
 }
 
-function closeServer(server: Server): Promise<void> {
-  return new Promise((resolve, reject) => {
-    server.close((error) => (error ? reject(error) : resolve()));
+function targetPath(origin: string, pathname: string): string {
+  return createScramjetProxyPath(`${origin}${pathname}`, {
+    controllerId: "controller-test",
+    frameId: "frame-test",
   });
 }
+
+test("uses the official Scramjet prefix and keeps target query separate from gateway metadata", () => {
+  const path = createScramjetProxyPath(
+    "https://example.test/app/page?mode=1#section",
+    { controllerId: "controller-test", frameId: "frame-test" },
+  );
+
+  assert.match(path, /^\/~\/sj\/controller-test\/frame-test\/https%3A%2F%2F/);
+  const route = parseScramjetProxyUrl(new URL(path, "https://proxy.test"));
+  assert.equal(route.controllerId, "controller-test");
+  assert.equal(route.frameId, "frame-test");
+  assert.equal(route.target, "https://example.test/app/page?mode=1#section");
+  assert.equal(route.metadata.toString(), "");
+});
+
+test("classifies loopback and restricted addresses for the gateway policy", () => {
+  assert.equal(isLoopbackAddress("127.0.0.1"), true);
+  assert.equal(isLoopbackAddress("::1"), true);
+  assert.equal(isRestrictedAddress("10.0.0.1"), true);
+  assert.equal(isRestrictedAddress("169.254.169.254"), true);
+  assert.equal(isRestrictedAddress("fc00::1"), true);
+  assert.equal(isRestrictedAddress("8.8.8.8"), false);
+});
+
+test("requires explicit development policy for a local fixture", async () => {
+  const lookup = async () => [{ address: "127.0.0.1", family: 4 }];
+  const developmentPolicy = createGatewayPolicy({
+    development: true,
+    allowedHosts: ["fixture.test"],
+    allowLoopback: true,
+  });
+
+  await validateGatewayTarget(
+    new URL("http://fixture.test:3000/app"),
+    developmentPolicy,
+    lookup,
+  );
+
+  await assert.rejects(
+    validateGatewayTarget(
+      new URL("http://fixture.test:3000/app"),
+      createGatewayPolicy({ allowedHosts: ["fixture.test"] }),
+      lookup,
+    ),
+    /Loopback upstream targets are disabled/,
+  );
+
+  await assert.rejects(
+    validateGatewayTarget(
+      new URL("http://fixture.test:3000/app"),
+      developmentPolicy,
+      async () => [{ address: "10.0.0.1", family: 4 }],
+    ),
+    /Private, link-local, metadata, or reserved upstream targets are disabled/,
+  );
+
+  assert.throws(
+    () => createGatewayPolicy({ allowLoopback: true }),
+    /development-only/,
+  );
+});
+
+test("forwards HTTP methods and bodies, preserves streaming, and rewrites safe redirects", async () => {
+  const fixture = await listenFixture();
+  const gateway = await listenHttpGatewayServer({
+    policy: createGatewayPolicy({
+      development: true,
+      allowedHosts: ["127.0.0.1"],
+      allowLoopback: true,
+      maxRequestBodyBytes: 16,
+      maxResponseBodyBytes: 1024 * 1024,
+      timeoutMs: 500,
+    }),
+  });
+
+  try {
+    const jsonResponse = await fetch(`${gateway.origin}${targetPath(fixture.origin, "/json?mode=direct")}`);
+    assert.equal(jsonResponse.status, 200);
+    assert.deepEqual(await jsonResponse.json(), { ok: true, query: "direct" });
+
+    const postResponse = await fetch(`${gateway.origin}${targetPath(fixture.origin, "/echo")}`, {
+      method: "POST",
+      headers: { "content-type": "text/plain", "x-fixture-header": "present" },
+      body: "payload",
+    });
+    assert.equal(postResponse.status, 200);
+    assert.equal(await postResponse.text(), "POST:present:payload");
+
+    const streamResponse = await fetch(`${gateway.origin}${targetPath(fixture.origin, "/stream")}`);
+    assert.equal(streamResponse.status, 200);
+    assert.ok(streamResponse.body);
+    const reader = streamResponse.body.getReader();
+    const chunks: string[] = [];
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(new TextDecoder().decode(value));
+    }
+    assert.equal(chunks.join(""), "first-second");
+
+    const redirectResponse = await fetch(`${gateway.origin}${targetPath(fixture.origin, "/redirect")}`, {
+      redirect: "manual",
+    });
+    assert.equal(redirectResponse.status, 302);
+    const location = redirectResponse.headers.get("location");
+    assert.ok(location);
+    const redirectRoute = parseScramjetProxyUrl(new URL(location, gateway.origin));
+    assert.equal(redirectRoute.target, `${fixture.origin}/json?mode=redirect`);
+  } finally {
+    await gateway.close();
+    await fixture.close();
+  }
+});
+
+test("rejects oversized requests, unsafe redirects, and upstream timeouts", async () => {
+  const fixture = await listenFixture();
+  const gateway = await listenHttpGatewayServer({
+    policy: createGatewayPolicy({
+      development: true,
+      allowedHosts: ["127.0.0.1"],
+      allowLoopback: true,
+      maxRequestBodyBytes: 4,
+      timeoutMs: 20,
+    }),
+  });
+
+  try {
+    const oversized = await fetch(`${gateway.origin}${targetPath(fixture.origin, "/echo")}`, {
+      method: "POST",
+      body: "12345",
+    });
+    assert.equal(oversized.status, 413);
+
+    const unsafeRedirect = await fetch(`${gateway.origin}${targetPath(fixture.origin, "/external-redirect")}`, {
+      redirect: "manual",
+    });
+    assert.equal(unsafeRedirect.status, 403);
+
+    const timeout = await fetch(`${gateway.origin}${targetPath(fixture.origin, "/slow")}`);
+    assert.equal(timeout.status, 504);
+  } finally {
+    await gateway.close();
+    await fixture.close();
+  }
+});
+
+test("configures Wisp restrictions and only handles the exact Wisp endpoint", () => {
+	const calls: Array<{ url: string; headBytes: number }> = [];
+	const wisp = {
+		options: {},
+		routeRequest(request: { url?: string }, _socket: Duplex, head: Buffer) {
+			calls.push({ url: request.url ?? "", headBytes: head.byteLength });
+		},
+	};
+	const policy = createGatewayPolicy({
+		development: true,
+		allowedHosts: ["127.0.0.1"],
+		allowLoopback: true,
+		maxWispStreamsTotal: 4,
+		maxWebSocketConnectionBytes: 128,
+	});
+	const handler = createWispUpgradeHandler({ wisp, policy });
+
+	const invalidSocket = createDuplexSocket();
+	assert.equal(
+		handler(
+			{
+				url: "/wisp/127.0.0.1:80",
+				method: "GET",
+				headers: { upgrade: "websocket" },
+			} as never,
+			invalidSocket,
+			Buffer.alloc(0),
+		),
+		false,
+	);
+	assert.equal(calls.length, 0);
+	invalidSocket.destroy();
+
+	const validSocket = createDuplexSocket();
+	assert.equal(
+		handler(
+			{
+				url: "/wisp/?v=2",
+				method: "GET",
+				headers: { upgrade: "WebSocket" },
+			} as never,
+			validSocket,
+			Buffer.from([1, 2]),
+		),
+		true,
+	);
+	assert.deepEqual(calls, [{ url: "/wisp/?v=2", headBytes: 2 }]);
+	assert.equal(wisp.options.allow_loopback_ips, true);
+	assert.equal(wisp.options.allow_private_ips, false);
+	assert.equal(wisp.options.allow_udp_streams, false);
+	assert.equal(wisp.options.stream_limit_per_host, -1);
+	assert.equal(wisp.options.stream_limit_total, 4);
+	assert.equal(wisp.options.hostname_whitelist?.[0]?.test("127.0.0.1"), true);
+	validSocket.destroy();
+});
+
+test("forwards text and binary Wisp streams through the official Wisp server", async () => {
+	const echo = await listenTcpEcho();
+	const closeEcho = await listenTcpEcho(true);
+	const policy = createGatewayPolicy({
+		development: true,
+		allowedHosts: ["127.0.0.1"],
+		allowLoopback: true,
+		maxWebSocketConnectionBytes: 1024 * 1024,
+	});
+	const upgrade = await createOfficialWispUpgradeHandler({ policy });
+	const gateway = await listenHttpGatewayServer({ policy, upgrade });
+	let connection: InstanceType<typeof wispClient.ClientConnection> | undefined;
+
+	try {
+		const wispUrl = `${gateway.origin.replace(/^http:/, "ws:")}/wisp/`;
+		connection = new wispClient.ClientConnection(wispUrl);
+		await waitForWispOpen(connection);
+
+		const stream = connection.create_stream("127.0.0.1", echo.port);
+		const textPayload = new TextEncoder().encode("wisp-text");
+		stream.send(textPayload);
+		assert.equal(
+			new TextDecoder().decode(await waitForWispMessage(stream)),
+			"wisp-text",
+		);
+
+		const binaryPayload = new Uint8Array([0, 1, 2, 127, 128, 255]);
+		stream.send(binaryPayload);
+		assert.deepEqual(
+			Array.from(await waitForWispMessage(stream)),
+			Array.from(binaryPayload),
+		);
+
+		stream.close(2);
+
+		const closingStream = connection.create_stream("127.0.0.1", closeEcho.port);
+		const serverClosePromise = waitForWispClose(closingStream);
+		closingStream.send(new Uint8Array([42]));
+		assert.equal(await serverClosePromise, 2);
+	} finally {
+		connection?.close();
+		await new Promise((resolve) => setTimeout(resolve, 25));
+		await gateway.close();
+		await echo.close();
+		await closeEcho.close();
+	}
+});
