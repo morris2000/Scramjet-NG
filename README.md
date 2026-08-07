@@ -32,13 +32,15 @@ The design keeps Scramjet core components and adds:
 
 ## Current slice
 
-The local runtime slice now contains three explicit boundaries:
+The local runtime slice now contains four explicit boundaries:
 
 - `runtime/adapter/` binds the audited official browser runtime;
 - `runtime/assets/` serves only pinned, verified runtime assets;
 - `runtime/gateway/` decodes the official `/~/sj/<controller>/<frame>/...`
   route and forwards only targets allowed by an explicit security policy,
   including the `/wisp/` WebSocket upgrade boundary.
+- `runtime/composition/` combines the harness, browser assets, HTTP gateway,
+  and Wisp endpoint on one proxy origin for live browser regression tests.
 
 The adapter boundary mirrors the audited upstream API:
 
@@ -56,6 +58,8 @@ pnpm test
 pnpm check
 pnpm check:gateway
 pnpm check:wisp
+pnpm check:composition
+pnpm e2e
 ```
 
 The gateway is intentionally allowlist-first. Production policy rejects
@@ -66,4 +70,4 @@ general-purpose public proxy is safe or already running.
 
 ## Development Status
 
-Phase 1: Repository audit and compatibility harness bootstrap.
+Phase 1: Repository audit, runtime composition, and live compatibility harness.
