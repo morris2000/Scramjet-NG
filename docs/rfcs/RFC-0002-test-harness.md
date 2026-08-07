@@ -16,18 +16,26 @@ The implemented harness provides:
 - Service Worker registration;
 - Wisp transport setup;
 - Playwright browser regression tests for fixture loading, relative fetch,
-  POST echo, and streaming response.
+  POST echo, streaming response, text/binary WebSocket frames, and SPA History
+  API navigation;
+- a direct fixture WebSocket regression test independent of the browser.
 
 ## Security
 
 The fixture is local and explicitly allowlisted in development mode. Production
 policy remains restrictive and rejects private and loopback targets by default.
 
+The fixture accepts only its explicit `/socket` WebSocket endpoint. Because
+Chromium/libcurl can send h2c upgrade headers for ordinary HTTP requests, the
+fixture keeps a small HTTP fallback for non-WebSocket upgrades rather than
+treating every upgrade as a WebSocket.
+
 ## Compatibility Risks
 
 The current browser harness exercises the audited runtime assets and the
-Libcurl/Wisp path only. SPA navigation, browser WebSocket assertions, SSE,
-workers, dynamic imports, cookies, and storage remain future coverage.
+Libcurl/Wisp path only. SSE, workers, dynamic imports, cookies, and storage
+remain future coverage. The SPA check covers History API state transitions; it
+does not yet represent a full client-side router or production application.
 
 ## Rollback
 
