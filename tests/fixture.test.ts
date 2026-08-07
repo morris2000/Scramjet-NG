@@ -101,3 +101,22 @@ test("fixture exposes the cookie contract used by the browser slice", async () =
 		await fixture.close();
 	}
 });
+
+test("fixture serves dynamic module and Worker script contracts", async () => {
+	const fixture = await listenCompatibilityFixture();
+
+	try {
+		const [moduleResponse, workerResponse] = await Promise.all([
+			fetch(`${fixture.origin}/dynamic-module.js`),
+			fetch(`${fixture.origin}/worker.js`),
+		]);
+		assert.equal(moduleResponse.status, 200);
+		assert.equal(workerResponse.status, 200);
+		assert.match(moduleResponse.headers.get("content-type") ?? "", /javascript/);
+		assert.match(workerResponse.headers.get("content-type") ?? "", /javascript/);
+		assert.match(await moduleResponse.text(), /dynamicValue = "dynamic-value"/);
+		assert.match(await workerResponse.text(), /self\.addEventListener\("message"/);
+	} finally {
+		await fixture.close();
+	}
+});
