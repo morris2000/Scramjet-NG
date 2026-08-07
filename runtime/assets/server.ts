@@ -1,4 +1,10 @@
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import {
+	createServer,
+	type IncomingMessage,
+	type RequestListener,
+	type Server,
+	type ServerResponse,
+} from "node:http";
 import { readFile } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
 import {
@@ -16,6 +22,7 @@ export interface RuntimeAssetServerOptions extends RuntimeAssetManifestOptions {
 
 export interface RuntimeAssetServer {
 	readonly server: Server;
+	readonly requestHandler: RequestListener;
 	readonly manifest: RuntimeAssetManifest;
 	readonly root: string;
 }
@@ -165,7 +172,7 @@ export function createRuntimeAssetServer(
 	const serviceWorkerSource = createScramjetServiceWorkerSource({
 		controllerSwPath: manifest.controllerServiceWorkerPath,
 	});
-	const server = createServer((request, response) => {
+	const requestHandler: RequestListener = (request, response) => {
 		void handleRequest(
 			request,
 			response,
@@ -183,9 +190,10 @@ export function createRuntimeAssetServer(
 				);
 			}
 		});
-	});
+	};
+	const server = createServer(requestHandler);
 
-	return { server, manifest, root };
+	return { server, requestHandler, manifest, root };
 }
 
 export async function listenRuntimeAssetServer(
@@ -233,4 +241,3 @@ export async function listenRuntimeAssetServer(
 			}),
 	};
 }
-
