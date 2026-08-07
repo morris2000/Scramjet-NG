@@ -111,7 +111,20 @@ The Wisp upgrade boundary is available through the pinned
 `@mercuryworkshop/wisp-js@0.4.1` server dependency. It accepts only `/wisp/`,
 applies the same allowlist and development loopback policy, disables UDP by
 default, and enforces a total stream/connection limit. Browser asset
-composition and DNS-to-connection pinning remain separate follow-up work.
+composition is provided by `runtime/composition/`; DNS-to-connection pinning
+remains separate follow-up work.
+
+## Browser composition
+
+`runtime/composition/` creates the first single-origin live test boundary. It
+serves the application-owned runtime harness and pinned assets, forwards
+`/~/sj/` HTTP routes through the gateway, and attaches the `/wisp/` WebSocket
+upgrade handler. The harness loads the audited browser globals, registers the
+Service Worker, creates the selected transport and controller, then navigates a
+managed iframe to the self-owned fixture.
+
+The live Playwright checks are intentionally limited to the self-owned fixture;
+this composition server is not a production lifecycle manager.
 
 ## Security boundary
 
@@ -124,7 +137,6 @@ socket-level DNS pinning and structured audit logging are still pending.
 or close a transport; those resource operations belong in an explicit
 transport lifecycle contract when concrete runtime bindings are wired.
 
-The binding only wires browser runtime assets. The HTTP gateway and Wisp
-upgrade boundary are currently standalone slices; Scramjet-NG still needs
-final composition of the adapter, gateway, Service Worker, and fixture before
-the Playwright fixture can be loaded through a live proxy.
+The binding still wires the browser runtime through the official globals, while
+the composition server now connects that binding contract to the gateway,
+Service Worker, Wisp transport, and fixture for the live Playwright slice.
