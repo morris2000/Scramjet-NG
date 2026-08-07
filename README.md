@@ -17,6 +17,8 @@ The project focuses on:
 - Dynamic import
 - Web Worker
 - Nested iframe and postMessage
+- Blob URL and multipart file upload
+- AbortController compatibility
 - Storage and origin virtualization
 - Browser API compatibility testing
 
@@ -45,8 +47,9 @@ The local runtime slice now contains four explicit boundaries:
 - `fixtures/compatibility-app/` provides the self-owned dynamic test app,
   including streaming and POST fetches, finite SSE, text/binary WebSocket echo,
   SPA History API controls, cookie round-trips, virtual-origin storage isolation,
-  dynamic module loading, dedicated Worker message echo, and nested iframe
-  postMessage origin checks.
+  dynamic module loading, dedicated Worker message echo, nested iframe
+  postMessage origin checks, Blob URL reads, multipart file uploads, and
+  AbortController behavior.
 
 The adapter boundary mirrors the audited upstream API:
 
@@ -73,7 +76,9 @@ The browser regression currently verifies the self-owned fixture through the
 complete official network paths: browser rewrite, Libcurl transport, Wisp,
 gateway policy, finite SSE framing, WebSocket text/binary frames, SPA
 `pushState`/back navigation, cookie request/response round-trips, parent-origin storage isolation, dynamic import, Worker script rewriting with
-message round-trip, and nested iframe postMessage origin checks.
+message round-trip, nested iframe postMessage origin checks, Blob URL reads,
+FormData/File upload forwarding, and app-facing AbortController `AbortError`
+behavior.
 
 The gateway is intentionally allowlist-first. Production policy rejects
 loopback, private, link-local, metadata, and reserved addresses; a local
