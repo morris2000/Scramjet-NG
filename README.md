@@ -42,8 +42,8 @@ The local runtime slice now contains four explicit boundaries:
 - `runtime/composition/` combines the harness, browser assets, HTTP gateway,
   and Wisp endpoint on one proxy origin for live browser regression tests.
 - `fixtures/compatibility-app/` provides the self-owned dynamic test app,
-  including streaming and POST fetches, text/binary WebSocket echo, and SPA
-  History API controls.
+  including streaming and POST fetches, finite SSE, text/binary WebSocket echo,
+  and SPA History API controls.
 
 The adapter boundary mirrors the audited upstream API:
 
@@ -67,9 +67,9 @@ pnpm e2e
 ```
 
 The browser regression currently verifies the self-owned fixture through the
-complete official WebSocket path: browser rewrite, Libcurl transport, Wisp,
-gateway policy, fixture WebSocket upgrade, and text/binary frame echo. It also
-verifies virtual SPA `pushState` and back navigation.
+complete official network paths: browser rewrite, Libcurl transport, Wisp,
+gateway policy, finite SSE framing, WebSocket text/binary frames, and SPA
+`pushState`/back navigation.
 
 The gateway is intentionally allowlist-first. Production policy rejects
 loopback, private, link-local, metadata, and reserved addresses; a local
