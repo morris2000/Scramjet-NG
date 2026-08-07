@@ -83,6 +83,33 @@ async function handleFixtureRequest(
 		return;
 	}
 
+	if (url.pathname === "/dynamic-module.js" && request.method === "GET") {
+		writeText(
+			response,
+			200,
+			"application/javascript; charset=utf-8",
+			`export const dynamicValue = "dynamic-value";
+export function describeDynamicModule() {
+	return "module-loaded";
+}
+`
+		);
+		return;
+	}
+
+	if (url.pathname === "/worker.js" && request.method === "GET") {
+		writeText(
+			response,
+			200,
+			"application/javascript; charset=utf-8",
+			`self.addEventListener("message", (event) => {
+	self.postMessage(\`worker:\${event.data}\`);
+});
+`
+		);
+		return;
+	}
+
 	if (url.pathname === "/api/json" && request.method === "GET") {
 		writeText(
 			response,
@@ -308,6 +335,8 @@ function writeFixtureHtml(response: ServerResponse): void {
     <dt>Server-Sent Events</dt><dd id="sse-result">pending</dd>
     <dt>Cookie</dt><dd id="cookie-result">pending</dd>
     <dt>Storage</dt><dd id="storage-result">pending</dd>
+    <dt>Dynamic Import</dt><dd id="dynamic-result">pending</dd>
+    <dt>Web Worker</dt><dd id="worker-result">pending</dd>
     <dt>Error</dt><dd id="error-result"></dd>
   </dl>
   <script src="/main.js"></script>
