@@ -1,47 +1,59 @@
 import { test, expect } from "@playwright/test";
 
-const fixtureUrl = process.env.FIXTURE_URL ?? "http://127.0.0.1:3000";
+const proxyUrl = process.env.SCRAMJET_PROXY_ORIGIN ?? "http://127.0.0.1:8080";
 
 /**
- * Initial runtime compatibility smoke tests.
- *
- * These tests intentionally target the local fixture application first.
- * Scramjet runtime URL will be injected once the runtime harness is wired.
+ * The browser enters through the single-origin runtime composition harness.
+ * The fixture itself is loaded into the Scramjet-managed iframe.
  */
 test.describe("Scramjet-NG compatibility runtime", () => {
-  test("loads fixture application", async ({ page }) => {
-    await page.goto(fixtureUrl);
-    await expect(page).toHaveTitle(/Scramjet-NG|Compatibility/i);
-  });
+	test("loads the fixture through the live Scramjet runtime", async ({ page }) => {
+		await page.goto(`${proxyUrl}/`);
+		await expect(page.locator("#runtime-status")).toHaveAttribute(
+			"data-state",
+			"ready",
+			{ timeout: 30_000 },
+		);
 
-  test("supports relative fetch", async ({ page }) => {
-    await page.goto(fixtureUrl);
+		const fixture = page.frameLocator("#scramjet-frame");
+		await expect(fixture.locator("#app")).toHaveText("Fixture loaded");
+		await expect(fixture.locator("#relative-result")).not.toHaveText("pending");
+	});
 
-    const result = await page.evaluate(async () => {
-      const response = await fetch("/api/json");
-      return response.json();
-    });
+	test("supports relative fetch through the proxy route", async ({ page }) => {
+		await page.goto(`${proxyUrl}/`);
+		await expect(page.locator("#runtime-status")).toHaveAttribute("data-state", "ready");
 
-    expect(result).toBeTruthy();
-  });
+		const fixture = page.frameLocator("#scramjet-frame");
+		await expect(fixture.locator("#relative-result")).toContainText(
+			'"ok":true',
+		);
+	});
 
-  test("receives streaming response", async ({ page }) => {
-    await page.goto(fixtureUrl);
+	test("keeps streaming response readable in the fixture", async ({ page }) => {
+		await page.goto(`${proxyUrl}/`);
+		await expect(page.locator("#runtime-status")).toHaveAttribute("data-state", "ready");
 
-    const chunks = await page.evaluate(async () => {
-      const response = await fetch("/stream");
-      const reader = response.body!.getReader();
-      const output: string[] = [];
+		const fixture = page.frameLocator("#scramjet-frame");
+		await expect(fixture.locator("#stream-result")).toContainText("3:", {
+			timeout: 30_000,
+		});
+		await expect(fixture.locator("#echo-result")).toContainText("hello scramjet-ng");
+	});
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        output.push(new TextDecoder().decode(value));
-      }
+	test("exposes an active Service Worker on the proxy origin", async ({ page }) => {
+		await page.goto(`${proxyUrl}/`);
+		await expect(page.locator("#runtime-status")).toHaveAttribute("data-state", "ready");
 
-      return output;
-    });
+		const state = await page.evaluate(async () => {
+			const registration = await navigator.serviceWorker.ready;
+			return {
+				active: Boolean(registration.active),
+				scope: registration.scope,
+			};
+		});
 
-    expect(chunks.length).toBeGreaterThan(0);
-  });
+		expect(state.active).toBe(true);
+		expect(state.scope).toBe(`${proxyUrl}/`);
+	});
 });
