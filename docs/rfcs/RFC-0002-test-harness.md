@@ -16,9 +16,10 @@ The implemented harness provides:
 - Service Worker registration;
 - Wisp transport setup;
 - Playwright browser regression tests for fixture loading, relative fetch,
-  POST echo, streaming response, text/binary WebSocket frames, and SPA History
-  API navigation;
-- a direct fixture WebSocket regression test independent of the browser.
+  POST echo, streaming response, finite SSE EventSource behavior, text/binary
+  WebSocket frames, and SPA History API navigation;
+- direct fixture regression tests independent of the browser for WebSocket echo
+  and SSE framing/stream completion.
 
 ## Security
 
@@ -33,9 +34,9 @@ treating every upgrade as a WebSocket.
 ## Compatibility Risks
 
 The current browser harness exercises the audited runtime assets and the
-Libcurl/Wisp path only. SSE, workers, dynamic imports, cookies, and storage
-remain future coverage. The SPA check covers History API state transitions; it
-does not yet represent a full client-side router or production application.
+Libcurl/Wisp path only. The SSE coverage intentionally uses a finite stream and
+does not yet claim long-lived reconnect/retry compatibility. Workers, dynamic
+imports, cookies, and storage remain future coverage.
 
 ## Rollback
 
