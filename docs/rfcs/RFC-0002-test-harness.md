@@ -18,11 +18,12 @@ The implemented harness provides:
 - Playwright browser regression tests for fixture loading, relative fetch,
   POST echo, streaming response, finite SSE EventSource behavior, text/binary
   WebSocket frames, SPA History API navigation, cookie round-trips, and
-  parent-origin storage isolation, dynamic module loading, and dedicated
-  Worker text message round-trip;
+  parent-origin storage isolation, dynamic module loading, dedicated Worker
+  text message round-trip, and same-origin nested iframe `postMessage` origin
+  checks;
 - direct fixture regression tests independent of the browser for WebSocket echo,
-  SSE framing/stream completion, cookie headers, and module/Worker asset
-  contracts.
+  SSE framing/stream completion, cookie headers, module/Worker assets, and the
+  nested iframe document contract.
 
 ## Security
 
@@ -40,9 +41,11 @@ The current browser harness exercises the audited runtime assets and the
 Libcurl/Wisp path only. The SSE coverage intentionally uses a finite stream and
 does not yet claim long-lived reconnect/retry compatibility. Dynamic import
 and Worker coverage is limited to a same-origin module and classic dedicated
-Worker text message. Module Workers, SharedWorkers, Worklets, binary messages,
-Worker lifecycle/error cases, and broader cross-origin behavior remain follow-up
-work. Cookie coverage is limited to basic `document.cookie`, `Set-Cookie`,
+Worker text message. Nested iframe coverage is limited to a same-origin child
+and a simple parent/child message round-trip. Module Workers, SharedWorkers,
+Worklets, binary messages, cross-origin frame policy, `targetOrigin` filtering,
+`MessagePort`, structured-clone edge cases, Worker lifecycle/error cases, and
+broader cross-origin behavior remain follow-up work. Cookie coverage is limited to basic `document.cookie`, `Set-Cookie`,
 and request-cookie behavior; the controller's cookie sync is asynchronous and
 advanced cookie attributes, partitioning, storage persistence, and broader
 cross-origin cases remain follow-up work.
