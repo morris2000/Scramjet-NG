@@ -10,6 +10,8 @@
 - A self-owned fixture WebSocket endpoint with text and binary echo.
 - Browser-level WebSocket regression through the official Libcurl/Wisp path.
 - SPA History API regression for `pushState`, `popstate`, and back navigation.
+- A finite fixture SSE endpoint with direct stream and native EventSource
+  regressions for framing, named events, event IDs, and close/error lifecycle.
 - A small h2c HTTP fallback in the fixture so ordinary Chromium/libcurl
   requests remain compatible when the fixture also owns a WebSocket upgrade
   listener.
