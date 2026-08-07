@@ -135,12 +135,19 @@ The live fixture currently covers:
 - basic `document.cookie` set/get, response `Set-Cookie`, request-cookie
   round-trips, and local/session storage kept separate from the parent harness;
 - same-origin dynamic module loading and a dedicated Worker text-message
-  round-trip through the official rewrite and Worker injection path.
+  round-trip through the official rewrite and Worker injection path;
+- a same-origin nested iframe document with parent/child `postMessage` round-trip
+  and virtual-origin assertions.
 
 The dynamic import check uses a same-origin relative module and the Worker
 check uses a classic dedicated Worker. Module Workers, SharedWorkers, Worklets,
 binary Worker messages, and Worker lifecycle/error behavior remain follow-up
 coverage.
+
+The nested iframe check currently covers a same-origin child document and a
+simple parent/child message round-trip. Cross-origin frame policy, strict
+`targetOrigin` filtering, `MessagePort`, structured-clone edge cases, and
+sandboxed iframe behavior remain follow-up coverage.
 
 The live cookie check allows a brief asynchronous handoff after a
 `document.cookie` mutation because the audited controller propagates cookie
