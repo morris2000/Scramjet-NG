@@ -41,6 +41,29 @@ test.describe("Scramjet-NG compatibility runtime", () => {
 		await expect(fixture.locator("#echo-result")).toContainText("hello scramjet-ng");
 	});
 
+	test("supports text and binary WebSocket frames through Wisp", async ({ page }) => {
+		await page.goto(`${proxyUrl}/`);
+		await expect(page.locator("#runtime-status")).toHaveAttribute("data-state", "ready");
+
+		const fixture = page.frameLocator("#scramjet-frame");
+		await expect(fixture.locator("#websocket-result")).toHaveText(
+			"text:browser-text|binary:1,2,3,4",
+			{ timeout: 30_000 },
+		);
+	});
+
+	test("preserves SPA pushState and back navigation", async ({ page }) => {
+		await page.goto(`${proxyUrl}/`);
+		await expect(page.locator("#runtime-status")).toHaveAttribute("data-state", "ready");
+
+		const fixture = page.frameLocator("#scramjet-frame");
+		await expect(fixture.locator("#spa-result")).toHaveText("home:/");
+		await fixture.locator("#spa-next").click();
+		await expect(fixture.locator("#spa-result")).toHaveText("next:/spa/next?step=2");
+		await fixture.locator("#spa-back").click();
+		await expect(fixture.locator("#spa-result")).toHaveText("home:/");
+	});
+
 	test("exposes an active Service Worker on the proxy origin", async ({ page }) => {
 		await page.goto(`${proxyUrl}/`);
 		await expect(page.locator("#runtime-status")).toHaveAttribute("data-state", "ready");
