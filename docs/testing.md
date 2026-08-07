@@ -50,6 +50,7 @@ Validate:
 - direct fixture SSE framing and stream completion
 - direct fixture cookie header and `Set-Cookie` contract
 - direct fixture dynamic module and Worker script responses
+- direct fixture nested iframe document contract
 - close codes and resource limits
 
 ### Browser Tests
@@ -69,6 +70,8 @@ Using Playwright and the self-owned fixture:
 - same-origin dynamic import
 - classic dedicated Worker construction, runtime injection, and text message
   round-trip
+- same-origin nested iframe loading and parent/child `postMessage` virtual-origin
+  assertion
 - SPA `pushState` and back navigation
 
 ## First Vertical Slice
@@ -90,6 +93,7 @@ self-owned compatibility fixture
     |-- /api/cookie Set-Cookie/request-cookie endpoint
     |-- /dynamic-module.js same-origin module endpoint
     |-- /worker.js dedicated Worker endpoint
+    |-- /nested-frame.html nested document and postMessage round-trip
     |-- document.cookie + local/session storage checks
     |-- SPA History API controls
 ```
@@ -107,15 +111,14 @@ asserting the next request.
 ## Future Coverage
 
 - long-lived SSE reconnect and retry behavior
-- dynamic import
-- Web Worker
-- iframe
 - Blob URL
 - file upload
 - AbortController
 - cookie expiry, domain/path edge cases, partitioning, and third-party policy
 - module Worker, SharedWorker, Worklet, Worker lifecycle/error cases, and
   binary Worker messages
+- cross-origin iframe policy, strict `targetOrigin` filtering, MessagePort,
+  structured-clone edge cases, sandboxed frames, and broader frame isolation
 - broader cross-origin storage and frame isolation cases
 
 Untested features are not marked as supported.
