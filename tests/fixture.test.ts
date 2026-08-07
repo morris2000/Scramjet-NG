@@ -48,3 +48,36 @@ test("fixture echoes WebSocket text and binary frames", async () => {
 		await fixture.close();
 	}
 });
+
+test("fixture streams standards-shaped SSE events", async () => {
+	const fixture = await listenCompatibilityFixture();
+
+	try {
+		const response = await fetch(`${fixture.origin}/events`, {
+			headers: { accept: "text/event-stream" },
+			signal: AbortSignal.timeout(5_000),
+		});
+		assert.equal(response.status, 200);
+		assert.match(response.headers.get("content-type") ?? "", /text\/event-stream/);
+		assert.ok(response.body);
+
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder();
+		const first = await reader.read();
+		assert.equal(first.done, false);
+		const chunks = [decoder.decode(first.value, { stream: true })];
+		while (true) {
+			const next = await reader.read();
+			if (next.done) break;
+			chunks.push(decoder.decode(next.value, { stream: true }));
+		}
+		chunks.push(decoder.decode());
+
+		const body = chunks.join("");
+		assert.match(body, /id: 1\ndata: hello from fixture\n\n/);
+		assert.match(body, /event: named\nid: 2\ndata: world from fixture\n\n/);
+		assert.match(body, /event: done\nid: 3\ndata: complete\n\n/);
+	} finally {
+		await fixture.close();
+	}
+});
