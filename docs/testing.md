@@ -49,6 +49,7 @@ Validate:
 - direct fixture WebSocket text and binary echo
 - direct fixture SSE framing and stream completion
 - direct fixture cookie header and `Set-Cookie` contract
+- direct fixture dynamic module and Worker script responses
 - close codes and resource limits
 
 ### Browser Tests
@@ -65,6 +66,9 @@ Using Playwright and the self-owned fixture:
 - EventSource open, message, named event, event ID, error, and close lifecycle
 - basic `document.cookie` set/get and response/request cookie round-trips
 - local/session storage key operations and parent harness isolation
+- same-origin dynamic import
+- classic dedicated Worker construction, runtime injection, and text message
+  round-trip
 - SPA `pushState` and back navigation
 
 ## First Vertical Slice
@@ -84,6 +88,8 @@ self-owned compatibility fixture
     |-- /events finite SSE endpoint
     |-- /socket WebSocket echo endpoint
     |-- /api/cookie Set-Cookie/request-cookie endpoint
+    |-- /dynamic-module.js same-origin module endpoint
+    |-- /worker.js dedicated Worker endpoint
     |-- document.cookie + local/session storage checks
     |-- SPA History API controls
 ```
@@ -108,6 +114,8 @@ asserting the next request.
 - file upload
 - AbortController
 - cookie expiry, domain/path edge cases, partitioning, and third-party policy
+- module Worker, SharedWorker, Worklet, Worker lifecycle/error cases, and
+  binary Worker messages
 - broader cross-origin storage and frame isolation cases
 
 Untested features are not marked as supported.
