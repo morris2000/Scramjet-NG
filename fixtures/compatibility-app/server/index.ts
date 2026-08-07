@@ -125,6 +125,20 @@ async function handleFixtureRequest(
 		return;
 	}
 
+	if (url.pathname === "/api/cookie" && request.method === "GET") {
+		response.setHeader(
+			"set-cookie",
+			"fixture_server=from-server; Path=/; SameSite=Lax"
+		);
+		writeText(
+			response,
+			200,
+			"application/json; charset=utf-8",
+			JSON.stringify({ requestCookie: request.headers.cookie ?? "" })
+		);
+		return;
+	}
+
 	if (url.pathname === "/api/echo" && request.method === "POST") {
 		try {
 			const body = await readBody(request);
@@ -292,6 +306,8 @@ function writeFixtureHtml(response: ServerResponse): void {
     <dt>POST echo</dt><dd id="echo-result">pending</dd>
     <dt>WebSocket</dt><dd id="websocket-result">pending</dd>
     <dt>Server-Sent Events</dt><dd id="sse-result">pending</dd>
+    <dt>Cookie</dt><dd id="cookie-result">pending</dd>
+    <dt>Storage</dt><dd id="storage-result">pending</dd>
     <dt>Error</dt><dd id="error-result"></dd>
   </dl>
   <script src="/main.js"></script>
