@@ -17,8 +17,19 @@ export {
   type ListeningHttpGateway,
 } from "./server.ts";
 export {
-  createScramjetProxyPath,
-  parseScramjetProxyUrl,
-  type ScramjetProxyRoute,
-  type ScramjetProxyRouteIds,
+	createScramjetProxyPath,
+	parseScramjetProxyUrl,
+	type ScramjetProxyRoute,
+	type ScramjetProxyRouteIds,
 } from "./url.ts";
+export {
+	configureWispServer,
+	createOfficialWispUpgradeHandler,
+	createWispUpgradeHandler,
+	loadOfficialWispServer,
+	DEFAULT_WISP_PATH,
+	type WispServerLike,
+	type WispServerOptions,
+	type WispUpgradeHandlerOptions,
+} from "./wisp.ts";
+export type { GatewayUpgradeHandler } from "./upgrade.ts";
