@@ -20,10 +20,12 @@ The implemented harness provides:
   WebSocket frames, SPA History API navigation, cookie round-trips, and
   parent-origin storage isolation, dynamic module loading, dedicated Worker
   text message round-trip, and same-origin nested iframe `postMessage` origin
-  checks;
+  checks, Blob URL reads, native `FormData`/`File` multipart upload, and
+  app-facing AbortController behavior;
 - direct fixture regression tests independent of the browser for WebSocket echo,
-  SSE framing/stream completion, cookie headers, module/Worker assets, and the
-  nested iframe document contract.
+  SSE framing/stream completion, cookie headers, module/Worker assets, the
+  runtime compatibility asset, multipart upload, slow-response cancellation,
+  and the nested iframe document contract.
 
 ## Security
 
@@ -45,8 +47,13 @@ Worker text message. Nested iframe coverage is limited to a same-origin child
 and a simple parent/child message round-trip. Module Workers, SharedWorkers,
 Worklets, binary messages, cross-origin frame policy, `targetOrigin` filtering,
 `MessagePort`, structured-clone edge cases, Worker lifecycle/error cases, and
-broader cross-origin behavior remain follow-up work. Cookie coverage is limited to basic `document.cookie`, `Set-Cookie`,
-and request-cookie behavior; the controller's cookie sync is asynchronous and
+broader cross-origin behavior remain follow-up work. Blob and upload coverage
+uses same-origin virtual targets and small text payloads. AbortController is
+currently partial: the fixture compatibility shim restores the app-facing
+`AbortError`, but the pinned controller drops the signal before its transport
+request, so full cancellation and cleanup remain follow-up work. Cookie
+coverage is limited to basic `document.cookie`, `Set-Cookie`, and request-cookie
+behavior; the controller's cookie sync is asynchronous and
 advanced cookie attributes, partitioning, storage persistence, and broader
 cross-origin cases remain follow-up work.
 
