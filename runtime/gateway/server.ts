@@ -52,13 +52,17 @@ export type GatewayFetch = (
 ) => Promise<Response>;
 
 export interface HttpGatewayServerOptions {
-  readonly proxyOrigin?: string;
-  readonly prefix?: string;
+	readonly proxyOrigin?: string;
+	readonly prefix?: string;
 	readonly policy: GatewayPolicy;
 	readonly fetch?: GatewayFetch;
 	readonly lookup?: LookupHost;
 	readonly upgrade?: GatewayUpgradeHandler;
 }
+
+type NormalizedHttpGatewayServerOptions =
+	Required<Pick<HttpGatewayServerOptions, "proxyOrigin" | "prefix">> &
+	Omit<HttpGatewayServerOptions, "proxyOrigin" | "prefix">;
 
 export interface ListeningHttpGateway {
   readonly server: Server;
@@ -222,9 +226,9 @@ function writeError(response: ServerResponse, error: unknown): void {
 }
 
 async function handleGatewayRequest(
-  request: IncomingMessage,
-  response: ServerResponse,
-  options: Required<Pick<HttpGatewayServerOptions, "proxyOrigin" | "prefix">> & Omit<HttpGatewayServerOptions, "proxyOrigin" | "prefix">,
+	request: IncomingMessage,
+	response: ServerResponse,
+	options: NormalizedHttpGatewayServerOptions,
 ): Promise<void> {
   if (!request.url) {
     throw new GatewayRequestError(400, "missing_request_url", "Request URL is required");
@@ -292,35 +296,53 @@ async function handleGatewayRequest(
     throw new GatewayRequestError(502, "upstream_error", "Unable to reach upstream target");
   } finally {
     clearTimeout(timeout);
-  }
+	}
+}
+
+function normalizeHttpGatewayServerOptions(
+	options: HttpGatewayServerOptions
+): NormalizedHttpGatewayServerOptions {
+	return {
+		...options,
+		proxyOrigin: options.proxyOrigin ?? "http://127.0.0.1:8080",
+		prefix: options.prefix ?? "/~/sj/",
+		policy: createGatewayPolicy(options.policy),
+	} as NormalizedHttpGatewayServerOptions;
+}
+
+
+export function createHttpGatewayRequestHandler(
+	options: HttpGatewayServerOptions
+): RequestListener {
+	const normalizedOptions = normalizeHttpGatewayServerOptions(options);
+	return (request, response) => {
+		void handleGatewayRequest(request, response, normalizedOptions).catch((error) => {
+			writeError(response, error);
+		});
+	};
+}
+
+
+export function attachGatewayUpgradeHandler(
+	server: Server,
+	upgrade: GatewayUpgradeHandler
+): void {
+	server.on("upgrade", (request, socket, head) => {
+		try {
+			const handled = upgrade(request, socket, head);
+			if (handled === false && !socket.destroyed) {
+				socket.destroy();
+			}
+ 		} catch {
+			socket.destroy();
+		}
+	});
 }
 
 export function createHttpGatewayServer(options: HttpGatewayServerOptions): Server {
-  const normalizedOptions = {
-    ...options,
-    proxyOrigin: options.proxyOrigin ?? "http://127.0.0.1:8080",
-    prefix: options.prefix ?? "/~/sj/",
-    policy: createGatewayPolicy(options.policy),
-  } as Required<Pick<HttpGatewayServerOptions, "proxyOrigin" | "prefix">> & Omit<HttpGatewayServerOptions, "proxyOrigin" | "prefix">;
-
-  const listener: RequestListener = (request, response) => {
-    void handleGatewayRequest(request, response, normalizedOptions).catch((error) => {
-      writeError(response, error);
-    });
-  };
-
-	const server = createServer(listener);
+	const server = createServer(createHttpGatewayRequestHandler(options));
 	if (options.upgrade) {
-		server.on("upgrade", (request, socket, head) => {
-			try {
-				const handled = options.upgrade?.(request, socket, head);
-				if (handled === false && !socket.destroyed) {
-					socket.destroy();
-				}
-			} catch {
-				socket.destroy();
-			}
-		});
+		attachGatewayUpgradeHandler(server, options.upgrade);
 	}
 
 	return server;
