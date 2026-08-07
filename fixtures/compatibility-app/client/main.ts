@@ -150,6 +150,59 @@ async function runEventSourceCheck() {
 	});
 }
 
+function hasCookie(cookieString, name, value) {
+	return cookieString
+		.split(";")
+		.some((cookie) => cookie.trim() === `${name}=${value}`);
+}
+
+async function runCookieCheck() {
+	document.cookie = "fixture_document=from-document; Path=/; SameSite=Lax";
+	await new Promise((resolve) => setTimeout(resolve, 50));
+	const beforeRequest = document.cookie;
+	const firstResponse = await fetch("/api/cookie", { credentials: "include" });
+	const first = await firstResponse.json();
+	const afterFirstResponse = document.cookie;
+	const secondResponse = await fetch("/api/cookie", { credentials: "include" });
+	const second = await secondResponse.json();
+
+	const documentCookie = hasCookie(beforeRequest, "fixture_document", "from-document");
+	const firstRequestCookie = hasCookie(
+		first.requestCookie,
+		"fixture_document",
+		"from-document"
+	);
+	const serverResponseCookie = hasCookie(
+		afterFirstResponse,
+		"fixture_server",
+		"from-server"
+	);
+	const secondRequestCookies =
+		hasCookie(second.requestCookie, "fixture_document", "from-document") &&
+		hasCookie(second.requestCookie, "fixture_server", "from-server");
+
+	if (!documentCookie || !firstRequestCookie || !serverResponseCookie || !secondRequestCookies) {
+		throw new Error("Cookie virtualization contract failed");
+	}
+
+	return "document:1|request1:1|response:1|request2:2";
+}
+
+function runStorageCheck() {
+	localStorage.removeItem("fixture-local");
+	sessionStorage.removeItem("fixture-session");
+	localStorage.setItem("fixture-local", "local-value");
+	sessionStorage.setItem("fixture-session", "session-value");
+
+	const localValue = localStorage.getItem("fixture-local");
+	const sessionValue = sessionStorage.getItem("fixture-session");
+	if (localValue !== "local-value" || sessionValue !== "session-value") {
+		throw new Error("Storage virtualization contract failed");
+	}
+
+	return `local:${localValue}|session:${sessionValue}`;
+}
+
 async function runCompatibilityChecks() {
 	document.title = "Scramjet-NG Compatibility Fixture";
 	if (app) app.textContent = "Fixture loaded";
@@ -171,6 +224,8 @@ async function runCompatibilityChecks() {
 
 	setResult("websocket-result", await runWebSocketCheck());
 	setResult("sse-result", await runEventSourceCheck());
+	setResult("cookie-result", await runCookieCheck());
+	setResult("storage-result", runStorageCheck());
 }
 
 runCompatibilityChecks().catch((error) => {
