@@ -107,8 +107,11 @@ const policy = createGatewayPolicy({
 });
 ```
 
-This is an HTTP gateway slice only. Wisp/WebSocket transport, browser asset
-composition, and DNS-to-connection pinning remain separate follow-up work.
+The Wisp upgrade boundary is available through the pinned
+`@mercuryworkshop/wisp-js@0.4.1` server dependency. It accepts only `/wisp/`,
+applies the same allowlist and development loopback policy, disables UDP by
+default, and enforces a total stream/connection limit. Browser asset
+composition and DNS-to-connection pinning remain separate follow-up work.
 
 ## Security boundary
 
@@ -121,7 +124,7 @@ socket-level DNS pinning and structured audit logging are still pending.
 or close a transport; those resource operations belong in an explicit
 transport lifecycle contract when concrete runtime bindings are wired.
 
-The binding only wires browser runtime assets. The HTTP gateway is currently a
-standalone slice; Scramjet-NG still needs Wisp/WebSocket transport and final
-composition of the adapter, gateway, Service Worker, and fixture before the
-Playwright fixture can be loaded through a live proxy.
+The binding only wires browser runtime assets. The HTTP gateway and Wisp
+upgrade boundary are currently standalone slices; Scramjet-NG still needs
+final composition of the adapter, gateway, Service Worker, and fixture before
+the Playwright fixture can be loaded through a live proxy.
