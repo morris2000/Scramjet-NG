@@ -137,7 +137,9 @@ The live fixture currently covers:
 - same-origin dynamic module loading and a dedicated Worker text-message
   round-trip through the official rewrite and Worker injection path;
 - a same-origin nested iframe document with parent/child `postMessage` round-trip
-  and virtual-origin assertions.
+  and virtual-origin assertions;
+- Blob URL create/fetch/revoke, native `FormData`/`File` multipart upload, and
+  app-facing `AbortController` behavior through the self-owned fixture.
 
 The dynamic import check uses a same-origin relative module and the Worker
 check uses a classic dedicated Worker. Module Workers, SharedWorkers, Worklets,
@@ -148,6 +150,14 @@ The nested iframe check currently covers a same-origin child document and a
 simple parent/child message round-trip. Cross-origin frame policy, strict
 `targetOrigin` filtering, `MessagePort`, structured-clone edge cases, and
 sandboxed iframe behavior remain follow-up coverage.
+
+Blob URL coverage follows the audited `URL.createObjectURL` and
+`URL.revokeObjectURL` hooks. The upload check keeps the browser's native
+`FormData` boundary and `File` metadata intact across the Wisp path. The pinned
+controller currently drops `AbortSignal` before the transport request, so the
+fixture loads `runtime-compat.js` to restore the app-facing `AbortError`
+contract; transport-level cancellation and request cleanup remain follow-up
+work.
 
 The live cookie check allows a brief asynchronous handoff after a
 `document.cookie` mutation because the audited controller propagates cookie
