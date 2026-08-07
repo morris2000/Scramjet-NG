@@ -88,6 +88,21 @@ test.describe("Scramjet-NG compatibility runtime", () => {
 		expect(parentState.session).toBeNull();
 	});
 
+	test("loads dynamic modules and Worker scripts through the proxy", async ({ page }) => {
+		await page.goto(`${proxyUrl}/`);
+		await expect(page.locator("#runtime-status")).toHaveAttribute("data-state", "ready");
+
+		const fixture = page.frameLocator("#scramjet-frame");
+		await expect(fixture.locator("#dynamic-result")).toHaveText(
+			"value:dynamic-value|describe:module-loaded",
+			{ timeout: 30_000 },
+		);
+		await expect(fixture.locator("#worker-result")).toHaveText(
+			"message:worker:ping",
+			{ timeout: 30_000 },
+		);
+	});
+
 	test("preserves SPA pushState and back navigation", async ({ page }) => {
 		await page.goto(`${proxyUrl}/`);
 		await expect(page.locator("#runtime-status")).toHaveAttribute("data-state", "ready");
