@@ -120,3 +120,18 @@ test("fixture serves dynamic module and Worker script contracts", async () => {
 		await fixture.close();
 	}
 });
+
+test("fixture serves the nested iframe document contract", async () => {
+	const fixture = await listenCompatibilityFixture();
+
+	try {
+		const response = await fetch(`${fixture.origin}/nested-frame.html`);
+		assert.equal(response.status, 200);
+		assert.match(response.headers.get("content-type") ?? "", /text\/html/);
+		const body = await response.text();
+		assert.match(body, /id="nested-app"/);
+		assert.match(body, /nested-iframe-reply/);
+	} finally {
+		await fixture.close();
+	}
+});
