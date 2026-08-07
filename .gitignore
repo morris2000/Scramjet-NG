@@ -3,3 +3,6 @@ coverage/
 playwright-report/
 test-results/
 *.log
+runtime-assets/
+.runtime-assets-*/
+
