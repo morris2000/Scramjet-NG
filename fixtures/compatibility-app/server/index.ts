@@ -110,6 +110,36 @@ export function describeDynamicModule() {
 		return;
 	}
 
+	if (url.pathname === "/nested-frame.html" && request.method === "GET") {
+		writeText(
+			response,
+			200,
+			"text/html; charset=utf-8",
+			`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Nested Scramjet-NG Fixture</title>
+</head>
+<body>
+  <p id="nested-app">Nested fixture ready</p>
+  <script>
+    window.addEventListener("message", (event) => {
+      if (event.data !== "parent-ping") return;
+      window.parent.postMessage({
+        type: "nested-iframe-reply",
+        childOrigin: window.location.origin,
+        receivedOrigin: event.origin,
+      }, "*");
+    });
+  </script>
+</body>
+</html>
+`
+		);
+		return;
+	}
+
 	if (url.pathname === "/api/json" && request.method === "GET") {
 		writeText(
 			response,
@@ -326,6 +356,10 @@ function writeFixtureHtml(response: ServerResponse): void {
     <button id="spa-next" type="button">Open SPA route</button>
     <button id="spa-back" type="button">Go back</button>
     <p id="spa-result">pending</p>
+  </section>
+  <section aria-label="Nested iframe">
+    <iframe id="nested-frame" title="Nested fixture" src="/nested-frame.html"></iframe>
+    <p id="iframe-result">pending</p>
   </section>
   <dl>
     <dt>Relative fetch</dt><dd id="relative-result">pending</dd>
