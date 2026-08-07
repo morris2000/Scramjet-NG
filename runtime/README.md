@@ -2,10 +2,15 @@
 
 This directory contains the Scramjet-NG runtime integration boundary.
 
-The adapter keeps the concrete Scramjet package behind injected bindings. The
-upstream controller currently needs a Service Worker and a proxy transport,
-exposes `wait()` and `createFrame()`, and performs navigation through
-`Frame.go()`. Its URL rewriter needs the frame runtime context.
+The adapter keeps the runtime lifecycle independent from the concrete Scramjet
+package. The official browser binding in `runtime/adapter/official.ts` now
+connects the upstream browser entry points:
+
+- Scramjet core bundle (`$scramjet`);
+- controller API (`$scramjetController`);
+- Libcurl or Epoxy transport client;
+- `navigator.serviceWorker.register()`;
+- controller `wait()`, frame creation, `Frame.go()`, and `rewriteUrl()`.
 
 The implementation is in `runtime/adapter/`:
 
@@ -14,15 +19,29 @@ The implementation is in `runtime/adapter/`:
   contracts;
 - `adapter.ts` handles initialization, readiness, failure, retry, frame
   creation, navigation, and upstream URL delegation;
+- `official.ts` binds those contracts to the official browser-global scripts;
 - `url.ts` centralizes target validation and rewrite metadata;
 - `index.ts` exposes the public adapter entrypoint.
 
-A browser entry point can later connect these bindings to:
+`runtime/bootstrap/register.ts` exposes `registerScramjetRuntime()` for a
+browser page. It loads same-origin runtime assets, registers the Service Worker,
+creates the selected transport, and initializes the controller.
 
-- `@mercuryworkshop/scramjet-controller`;
-- the selected `@mercuryworkshop/*-transport` implementation;
-- `navigator.serviceWorker.register()`;
-- `@mercuryworkshop/scramjet`'s `rewriteUrl()`.
+The default asset layout mirrors the official Scramjet bootstrap conventions:
+
+```text
+/sw.js
+/scram/scramjet.js
+/scram/scramjet.wasm
+/controller/controller.api.js
+/controller/controller.inject.js
+/controller/controller.sw.js
+/clients/libcurl-client.js
+/wisp/
+```
+
+Use `transport: "epoxy"` and provide the corresponding Epoxy client asset when
+that transport is selected.
 
 The adapter does not implement a second URL codec. This is important because
 the upstream rewriter owns its prefix, encoded target, hash handling, and
@@ -39,6 +58,7 @@ validation, limits, timeouts, and audit logging before it forwards a request.
 or close a transport; those resource operations belong in an explicit
 transport lifecycle contract when concrete runtime bindings are wired.
 
-The existing `runtime/harness/` and `runtime/bootstrap/` files remain the
-fixture/test-harness layer. They are not yet the concrete upstream Scramjet
-runtime implementation.
+The binding only wires browser runtime assets. Scramjet-NG still needs a proxy
+gateway, Wisp endpoint, Service Worker bundle, and served runtime assets before
+the Playwright fixture can be loaded through a live proxy.
+
