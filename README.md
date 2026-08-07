@@ -43,8 +43,8 @@ The local runtime slice now contains four explicit boundaries:
   and Wisp endpoint on one proxy origin for live browser regression tests.
 - `fixtures/compatibility-app/` provides the self-owned dynamic test app,
   including streaming and POST fetches, finite SSE, text/binary WebSocket echo,
-  SPA History API controls, cookie round-trips, and virtual-origin storage
-  isolation.
+  SPA History API controls, cookie round-trips, virtual-origin storage isolation,
+  dynamic module loading, and dedicated Worker message echo.
 
 The adapter boundary mirrors the audited upstream API:
 
@@ -70,8 +70,8 @@ pnpm e2e
 The browser regression currently verifies the self-owned fixture through the
 complete official network paths: browser rewrite, Libcurl transport, Wisp,
 gateway policy, finite SSE framing, WebSocket text/binary frames, SPA
-`pushState`/back navigation, cookie request/response round-trips, and
-parent-origin storage isolation.
+`pushState`/back navigation, cookie request/response round-trips, parent-origin storage isolation, dynamic
+import, and Worker script rewriting with message round-trip.
 
 The gateway is intentionally allowlist-first. Production policy rejects
 loopback, private, link-local, metadata, and reserved addresses; a local
