@@ -203,6 +203,52 @@ function runStorageCheck() {
 	return `local:${localValue}|session:${sessionValue}`;
 }
 
+async function runDynamicImportCheck() {
+	const loadedModule = await import("./dynamic-module.js");
+	if (
+		loadedModule.dynamicValue !== "dynamic-value" ||
+		loadedModule.describeDynamicModule() !== "module-loaded"
+	) {
+		throw new Error("Dynamic import contract failed");
+	}
+
+	return `value:${loadedModule.dynamicValue}|describe:${loadedModule.describeDynamicModule()}`;
+}
+
+function runWorkerCheck() {
+	return new Promise((resolve, reject) => {
+		const worker = new Worker("/worker.js");
+		let settled = false;
+		const timeout = setTimeout(() => {
+			if (settled) return;
+			settled = true;
+			worker.terminate();
+			reject(new Error("Worker message timed out"));
+		}, 10_000);
+
+		const finish = (callback, value) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timeout);
+			worker.terminate();
+			callback(value);
+		};
+
+		worker.addEventListener("message", (event) => {
+			if (event.data !== "worker:ping") {
+				finish(reject, new Error("Unexpected Worker message"));
+				return;
+			}
+
+			finish(resolve, "message:worker:ping");
+		});
+		worker.addEventListener("error", () => {
+			finish(reject, new Error("Worker failed"));
+		});
+		worker.postMessage("ping");
+	});
+}
+
 async function runCompatibilityChecks() {
 	document.title = "Scramjet-NG Compatibility Fixture";
 	if (app) app.textContent = "Fixture loaded";
@@ -226,6 +272,8 @@ async function runCompatibilityChecks() {
 	setResult("sse-result", await runEventSourceCheck());
 	setResult("cookie-result", await runCookieCheck());
 	setResult("storage-result", runStorageCheck());
+	setResult("dynamic-result", await runDynamicImportCheck());
+	setResult("worker-result", await runWorkerCheck());
 }
 
 runCompatibilityChecks().catch((error) => {
